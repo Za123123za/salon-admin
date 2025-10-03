@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <style>
+    :root{
+      --teal:#00acc1; --bg:#f6f8fa; --card:#fff; --text:#111; --muted:#6b7280;
+      --ok:#10b981; --warn:#f59e0b; --err:#ef4444;
+    }
+    *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    header{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--teal);color:#fff}
+    .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+    .card{background:var(--card);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn-teal{background:var(--teal);color:#fff}
+    .btn-ghost{background:#eef3f6;color:#111}
+    .btn-ok{background:var(--ok);color:#fff}
+    .btn-warn{background:var(--warn);color:#fff}
+    .btn-err{background:var(--err);color:#fff}
+    input,select{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{padding:10px 12px;text-align:left}
+    th{color:#374151;font-size:13px}
+    tr{background:#fff}
+    tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+    tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    .muted{color:var(--muted)}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
+    .b-pending{background:#fff7ed;color:#b45309}
+    .b-confirmed{background:#ecfdf5;color:#065f46}
+    .b-cancelled{background:#fef2f2;color:#b91c1c}
+    .b-completed{background:#eef2ff;color:#3730a3}
+    .tabs{display:flex;gap:8px;margin-bottom:8px}
+    .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+    .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+    .hidden{display:none}
+    .center{display:flex;justify-content:center;align-items:center}
+    .login{max-width:420px;margin:40px auto}
+  </style>
+  <!-- Supabase JS v2 (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header>
+  <div class="row">
+    <strong>Admin Dashboard</strong>
+    <span id="adminName" class="muted"></span>
+  </div>
+  <div class="row">
+    <button id="btnSignOut" class="btn btn-ghost hidden">ออกจากระบบ</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- =============== LOGIN =============== -->
+  <div id="loginSection" class="card login">
+    <h3 style="margin:0 0 10px 0;">เข้าสู่ระบบแอดมิน</h3>
+    <p class="muted" style="margin-top:0">กรอกอีเมล/รหัสผ่านบัญชีแอดมิน</p>
+    <div class="row">
+      <input id="email" type="email" placeholder="อีเมล" style="flex:1 1 220px" />
+      <input id="password" type="password" placeholder="รหัสผ่าน" style="flex:1 1 180px" />
+      <button id="btnLogin" class="btn btn-teal">เข้าสู่ระบบ</button>
+    </div>
+    <p id="loginMsg" class="muted" style="margin-top:10px"></p>
+  </div>
+
+  <!-- =============== APP =============== -->
+  <div id="appSection" class="hidden">
+    <div class="tabs">
+      <button id="tabBookings" class="active">คิววันนี้</button>
+      <button id="tabCustomers">ลูกค้าในระบบ</button>
+    </div>
+
+    <!-- Today Bookings -->
+    <section id="bookingsPanel" class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3 style="margin:0">คิววันนี้</h3>
+        <input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง" />
+      </div>
+      <div style="height:10px"></div>
+      <div class="muted" id="todayRange"></div>
+      <div style="height:10px"></div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>เวลา</th>
+              <th>ลูกค้า</th>
+              <th>บริการ</th>
+              <th>ช่าง</th>
+              <th>สถานะ</th>
+              <th style="width:230px">เปลี่ยนสถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="bookingRows">
+            <!-- rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Customers -->
+    <section id="customersPanel" class="card hidden">
+      <div class="row" style="justify-content:space-between">
+        <h3 style="margin:0">ลูกค้าในระบบ</h3>
+        <input id="searchCustomer" placeholder="ค้นหา: ชื่อผู้ใช้" />
+      </div>
+      <div style="height:10px"></div>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>ผู้ใช้</th>
+              <th>สิทธิ์</th>
+              <th>สมัครเมื่อ</th>
+            </tr>
+          </thead>
+          <tbody id="customerRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // ===== 1) ใส่คีย์โปรเจกต์คุณที่นี่ =====
+  const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4'; // ห้ามใช้ service_role ที่ฝั่งเว็บ
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ===== DOM =====
+  const loginSection  = document.getElementById('loginSection');
+  const appSection    = document.getElementById('appSection');
+  const adminNameEl   = document.getElementById('adminName');
+  const btnSignOut    = document.getElementById('btnSignOut');
+  const btnLogin      = document.getElementById('btnLogin');
+  const emailEl       = document.getElementById('email');
+  const passEl        = document.getElementById('password');
+  const loginMsg      = document.getElementById('loginMsg');
+
+  const tabBookings   = document.getElementById('tabBookings');
+  const tabCustomers  = document.getElementById('tabCustomers');
+  const bookingsPanel = document.getElementById('bookingsPanel');
+  const customersPanel= document.getElementById('customersPanel');
+
+  const searchBooking = document.getElementById('searchBooking');
+  const searchCustomer= document.getElementById('searchCustomer');
+  const bookingRows   = document.getElementById('bookingRows');
+  const customerRows  = document.getElementById('customerRows');
+  const todayRangeEl  = document.getElementById('todayRange');
+
+  // ===== State =====
+  let profilesMap = new Map(); // id -> profile
+  let bookingsRaw = [];
+  let customersRaw = [];
+
+  // ===== UI helpers =====
+  const fmtTime = iso => new Date(iso).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const fmtDate = d  => d.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
+  const badge = s => {
+    const map = {
+      pending:   'b-pending',
+      confirmed: 'b-confirmed',
+      cancelled: 'b-cancelled',
+      completed: 'b-completed'
+    };
+    return `<span class="badge ${map[s]||'b-pending'}">${s}</span>`;
+  };
+
+  // ===== Tabs =====
+  function setTab(which){
+    if(which==='bookings'){
+      tabBookings.classList.add('active'); tabCustomers.classList.remove('active');
+      bookingsPanel.classList.remove('hidden'); customersPanel.classList.add('hidden');
+    }else{
+      tabCustomers.classList.add('active'); tabBookings.classList.remove('active');
+      customersPanel.classList.remove('hidden'); bookingsPanel.classList.add('hidden');
+    }
+  }
+  tabBookings.onclick = ()=> setTab('bookings');
+  tabCustomers.onclick= ()=> setTab('customers');
+
+  // ===== Auth Flow =====
+  btnLogin.onclick = async () => {
+    loginMsg.textContent = 'กำลังเข้าสู่ระบบ...';
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: emailEl.value.trim(),
+      password: passEl.value
+    });
+    if(error){ loginMsg.textContent = 'เข้าสู่ระบบไม่สำเร็จ: '+error.message; return; }
+    await initApp();
+  };
+
+  btnSignOut.onclick = async ()=>{
+    await sb.auth.signOut();
+    appSection.classList.add('hidden');
+    loginSection.classList.remove('hidden');
+    loginMsg.textContent = 'ออกจากระบบแล้ว';
+  };
+
+  async function initApp(){
+    // โหลด user & profile
+    const { data: { user } } = await sb.auth.getUser();
+    if(!user){ loginMsg.textContent='กรุณาเข้าสู่ระบบ'; return; }
+
+    const { data: profile } = await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
+    if(!profile || !profile.is_admin){
+      loginMsg.textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)'; 
+      await sb.auth.signOut();
+      return;
+    }
+
+    adminNameEl.textContent = 'สวัสดี, ' + (profile.username || 'admin');
+    btnSignOut.classList.remove('hidden');
+    loginSection.classList.add('hidden');
+    appSection.classList.remove('hidden');
+
+    setTab('bookings');
+    await Promise.all([loadTodayBookings(), loadCustomers()]);
+  }
+
+  // ===== Data Loaders =====
+  async function loadTodayBookings(){
+    // ช่วงวันนี้
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0);
+    const end   = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0,0,0);
+    todayRangeEl.textContent = `ช่วงเวลา: ${fmtDate(start)} 00:00 - ${fmtDate(end)} 00:00`;
+
+    // ดึง bookings + services + staff
+    const { data: bookings } = await sb
+      .from('bookings')
+      .select('id,user_id,start_at,end_at,status,payment_method,notes, services(name,price), staff(display_name)')
+      .gte('start_at', start.toISOString()).lt('start_at', end.toISOString())
+      .order('start_at', { ascending: true });
+
+    bookingsRaw = bookings || [];
+
+    // โหลดโปรไฟล์ลูกค้า (เพื่อหาชื่อ)
+    const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
+    if(uids.length){
+      const { data: profs } = await sb.from('profiles').select('id,username').in('id', uids);
+      profilesMap = new Map((profs||[]).map(p=>[p.id, p]));
+    }
+
+    renderBookings();
+  }
+
+  function renderBookings(){
+    const q = (searchBooking.value||'').toLowerCase();
+    const rows = (bookingsRaw||[]).filter(b=>{
+      const name = profilesMap.get(b.user_id)?.username || '';
+      const svc  = b.services?.name || '';
+      const stf  = b.staff?.display_name || '';
+      return [name,svc,stf].some(x=>x.toLowerCase().includes(q));
+    }).map(b=>{
+      const name = profilesMap.get(b.user_id)?.username || '—';
+      const svc  = b.services?.name || '—';
+      const stf  = b.staff?.display_name || '—';
+      return `<tr>
+        <td>${fmtTime(b.start_at)}</td>
+        <td>${name}</td>
+        <td>${svc}</td>
+        <td>${stf}</td>
+        <td>${badge(b.status)}</td>
+        <td class="row">
+          <button class="btn btn-ok"   onclick="setStatus('${b.id}','confirmed')">ยืนยัน</button>
+          <button class="btn btn-warn" onclick="setStatus('${b.id}','completed')">เสร็จสิ้น</button>
+          <button class="btn btn-err"  onclick="setStatus('${b.id}','cancelled')">ยกเลิก</button>
+        </td>
+      </tr>`;
+    }).join('');
+    bookingRows.innerHTML = rows || `<tr><td colspan="6" class="muted">— ไม่มีคิววันนี้ —</td></tr>`;
+  }
+
+  async function setStatus(id, status){
+    const ok = confirm('ยืนยันเปลี่ยนสถานะเป็น "'+status+'" ?');
+    if(!ok) return;
+    const { error } = await sb.from('bookings').update({ status }).eq('id', id);
+    if(error){ alert('อัปเดตไม่สำเร็จ: '+error.message); return; }
+    await loadTodayBookings();
+  }
+
+  async function loadCustomers(){
+    const { data: rows } = await sb
+      .from('profiles')
+      .select('id,username,is_admin,created_at')
+      .order('created_at', { ascending: false });
+    customersRaw = rows || [];
+    renderCustomers();
+  }
+
+  function renderCustomers(){
+    const q = (searchCustomer.value||'').toLowerCase();
+    const rows = customersRaw.filter(p=>{
+      return (p.username||'').toLowerCase().includes(q);
+    }).map(p=>{
+      return `<tr>
+        <td>${p.username || '—'}</td>
+        <td>${p.is_admin ? 'Admin' : 'User'}</td>
+        <td>${fmtDate(new Date(p.created_at))}</td>
+      </tr>`;
+    }).join('');
+    customerRows.innerHTML = rows || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
+  }
+
+  // search handlers
+  searchBooking.addEventListener('input', renderBookings);
+  searchCustomer.addEventListener('input', renderCustomers);
+
+  // ถ้ามี session ค้างไว้ ให้เข้าอัตโนมัติ
+  (async ()=>{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session) initApp();
+  })();
+</script>
+</body>
+</html>

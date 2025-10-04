@@ -16,12 +16,8 @@
     .card{background:var(--card);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
     .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
-    .btn-teal{background:var(--teal);color:#fff}
     .btn-ghost{background:#eef3f6;color:#111}
-    .btn-ok{background:var(--ok);color:#fff}
-    .btn-warn{background:var(--warn);color:#fff}
-    .btn-err{background:var(--err);color:#fff}
-    input,select{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
+    input{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
     table{width:100%;border-collapse:separate;border-spacing:0 8px}
     th,td{padding:10px 12px;text-align:left}
     th{color:#374151;font-size:13px}
@@ -40,7 +36,6 @@
     .hidden{display:none}
     .login{max-width:420px;margin:40px auto}
   </style>
-  <!-- Supabase JS v2 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -57,26 +52,26 @@
 
 <div class="wrap">
 
-  <!-- =============== LOGIN =============== -->
+  <!-- LOGIN -->
   <div id="loginSection" class="card login">
     <h3 style="margin:0 0 10px 0;">เข้าสู่ระบบแอดมิน</h3>
     <p class="muted" style="margin-top:0">กรอกอีเมล/รหัสผ่านบัญชีแอดมิน</p>
     <div class="row">
       <input id="email" type="email" placeholder="อีเมล" style="flex:1 1 220px" />
       <input id="password" type="password" placeholder="รหัสผ่าน" style="flex:1 1 180px" />
-      <button id="btnLogin" class="btn btn-teal">เข้าสู่ระบบ</button>
+      <button id="btnLogin" class="btn btn-ghost">เข้าสู่ระบบ</button>
     </div>
     <p id="loginMsg" class="muted" style="margin-top:10px"></p>
   </div>
 
-  <!-- =============== APP =============== -->
+  <!-- APP -->
   <div id="appSection" class="hidden">
     <div class="tabs">
       <button id="tabBookings" class="active">คิวช่วง 30 วัน</button>
       <button id="tabCustomers">ลูกค้าในระบบ</button>
     </div>
 
-    <!-- Bookings (30 days) -->
+    <!-- Bookings -->
     <section id="bookingsPanel" class="card">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">คิวช่วง 30 วัน</h3>
@@ -98,12 +93,9 @@
               <th>บริการ</th>
               <th>ช่าง</th>
               <th>สถานะ</th>
-              <th style="width:230px">เปลี่ยนสถานะ</th>
             </tr>
           </thead>
-          <tbody id="bookingRows">
-            <!-- rows -->
-          </tbody>
+          <tbody id="bookingRows"></tbody>
         </table>
       </div>
     </section>
@@ -132,12 +124,12 @@
 </div>
 
 <script>
-  // ===== 1) ใส่คีย์โปรเจกต์คุณที่นี่ =====
+  // ===== ใส่คีย์โปรเจกต์คุณ =====
   const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // ห้ามใช้ service_role ฝั่งเว็บ
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // ===== DOM =====
+  // DOM
   const loginSection  = document.getElementById('loginSection');
   const appSection    = document.getElementById('appSection');
   const adminNameEl   = document.getElementById('adminName');
@@ -159,28 +151,22 @@
   const rangeTextEl   = document.getElementById('rangeText');
   const btnReload     = document.getElementById('btnReload');
 
-  // ===== State =====
-  let profilesMap = new Map(); // id -> profile
+  // State
+  let profilesMap = new Map();
   let bookingsRaw = [];
   let customersRaw = [];
 
-  // ===== UI helpers =====
+  // Helpers
   const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{
-    day:'2-digit', month:'2-digit',
-    hour:'2-digit',minute:'2-digit'
+    day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
   });
   const fmtDate = d  => d.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
   const badge = s => {
-    const map = {
-      pending:   'b-pending',
-      confirmed: 'b-confirmed',
-      cancelled: 'b-cancelled',
-      completed: 'b-completed'
-    };
+    const map = { pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed' };
     return `<span class="badge ${map[s]||'b-pending'}">${s}</span>`;
   };
 
-  // ===== Tabs =====
+  // Tabs
   function setTab(which){
     if(which==='bookings'){
       tabBookings.classList.add('active'); tabCustomers.classList.remove('active');
@@ -193,7 +179,7 @@
   tabBookings.onclick = ()=> setTab('bookings');
   tabCustomers.onclick= ()=> setTab('customers');
 
-  // ===== Auth Flow =====
+  // Auth
   btnLogin.onclick = async () => {
     loginMsg.textContent = 'กำลังเข้าสู่ระบบ...';
     const { error } = await sb.auth.signInWithPassword({
@@ -215,7 +201,6 @@
     const { data: { user } } = await sb.auth.getUser();
     if(!user){ loginMsg.textContent='กรุณาเข้าสู่ระบบ'; return; }
 
-    // ตรวจสิทธิ์แอดมิน
     const { data: profile } = await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
     if(!profile || !profile.is_admin){
       loginMsg.textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)';
@@ -231,12 +216,10 @@
     await Promise.all([loadBookings30d(), loadCustomers()]);
   }
 
-  // ===== Data Loaders =====
+  // Data loaders
   function getRange30d(){
-    const from = new Date();
-    from.setHours(0,0,0,0);
-    const to = new Date(from);
-    to.setDate(to.getDate()+30);
+    const from = new Date(); from.setHours(0,0,0,0);
+    const to = new Date(from); to.setDate(to.getDate()+30);
     return {from,to};
   }
 
@@ -251,7 +234,6 @@
       .order('start_at', { ascending: true });
 
     if(error){ alert('โหลดคิวไม่สำเร็จ: '+error.message); return; }
-
     bookingsRaw = bookings || [];
 
     const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
@@ -276,32 +258,15 @@
       const name = profilesMap.get(b.user_id)?.username || '—';
       const svc  = b.services?.name || '—';
       const stf  = b.staff?.display_name || '—';
-
-      // ปิดปุ่มเมื่อจบสถานะแล้ว
-      const isTerminal = (b.status === 'completed' || b.status === 'cancelled');
-
       return `<tr>
         <td>${fmtTime(b.start_at)}</td>
         <td>${name}</td>
         <td>${svc}</td>
         <td>${stf}</td>
         <td>${badge(b.status)}</td>
-        <td class="row">
-          <!-- ✅ ไม่มีปุ่ม "ยืนยัน" แล้ว -->
-          <button class="btn btn-warn" ${isTerminal ? 'disabled' : ''} onclick="setStatus('${b.id}','completed')">เสร็จสิ้น</button>
-          <button class="btn btn-err"  ${isTerminal ? 'disabled' : ''} onclick="setStatus('${b.id}','cancelled')">ยกเลิก</button>
-        </td>
       </tr>`;
     }).join('');
-    bookingRows.innerHTML = rows || `<tr><td colspan="6" class="muted">— ไม่มีคิวในช่วงนี้ —</td></tr>`;
-  }
-
-  async function setStatus(id, status){
-    const ok = confirm('ยืนยันเปลี่ยนสถานะเป็น "'+status+'" ?');
-    if(!ok) return;
-    const { error } = await sb.from('bookings').update({ status }).eq('id', id);
-    if(error){ alert('อัปเดตไม่สำเร็จ: '+error.message); return; }
-    await loadBookings30d();
+    bookingRows.innerHTML = rows || `<tr><td colspan="5" class="muted">— ไม่มีคิวในช่วงนี้ —</td></tr>`;
   }
 
   async function loadCustomers(){
@@ -331,7 +296,7 @@
   searchCustomer.addEventListener('input', renderCustomers);
   btnReload.addEventListener('click', loadBookings30d);
 
-  // ถ้ามี session ค้างไว้ ให้เข้าอัตโนมัติ
+  // auto sign-in
   (async ()=>{
     const { data:{ session } } = await sb.auth.getSession();
     if(session) initApp();

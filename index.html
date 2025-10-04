@@ -38,7 +38,6 @@
     .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
     .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
     .hidden{display:none}
-    .center{display:flex;justify-content:center;align-items:center}
     .login{max-width:420px;margin:40px auto}
   </style>
   <!-- Supabase JS v2 (CDN) -->
@@ -77,17 +76,17 @@
       <button id="tabCustomers">ลูกค้าในระบบ</button>
     </div>
 
-    <!-- Bookings (30 วัน) -->
+    <!-- Bookings (30 days) -->
     <section id="bookingsPanel" class="card">
       <div class="row" style="justify-content:space-between">
-        <h3 style="margin:0">คิวช่วง 30 วันถัดไป</h3>
+        <h3 style="margin:0">คิวช่วง 30 วัน</h3>
         <div class="row">
           <input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง" />
           <button id="btnReload" class="btn btn-ghost">รีเฟรช</button>
         </div>
       </div>
       <div style="height:10px"></div>
-      <div class="muted" id="rangeLabel"></div>
+      <div class="muted" id="rangeText"></div>
       <div style="height:10px"></div>
 
       <div class="card">
@@ -133,11 +132,9 @@
 </div>
 
 <script>
-  // ===== 1) ตั้งค่าคีย์โปรเจกต์ของคุณ =====
-  // ใช้ anon key เท่านั้น (ห้ามใช้ service_role บนเว็บสาธารณะ)
-  const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
-
+  // ===== 1) ใส่คีย์โปรเจกต์คุณที่นี่ =====
+  const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // ห้ามใช้ service_role ฝั่งเว็บ
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ===== DOM =====
@@ -159,7 +156,7 @@
   const searchCustomer= document.getElementById('searchCustomer');
   const bookingRows   = document.getElementById('bookingRows');
   const customerRows  = document.getElementById('customerRows');
-  const rangeLabelEl  = document.getElementById('rangeLabel');
+  const rangeTextEl   = document.getElementById('rangeText');
   const btnReload     = document.getElementById('btnReload');
 
   // ===== State =====
@@ -168,10 +165,18 @@
   let customersRaw = [];
 
   // ===== UI helpers =====
-  const fmtTime = iso => new Date(iso).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{
+    day:'2-digit', month:'2-digit',
+    hour:'2-digit',minute:'2-digit'
+  });
   const fmtDate = d  => d.toLocaleDateString('th-TH',{year:'numeric',month:'short',day:'numeric'});
   const badge = s => {
-    const map = { pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed' };
+    const map = {
+      pending:   'b-pending',
+      confirmed: 'b-confirmed',
+      cancelled: 'b-cancelled',
+      completed: 'b-completed'
+    };
     return `<span class="badge ${map[s]||'b-pending'}">${s}</span>`;
   };
 
@@ -191,7 +196,7 @@
   // ===== Auth Flow =====
   btnLogin.onclick = async () => {
     loginMsg.textContent = 'กำลังเข้าสู่ระบบ...';
-    const { data, error } = await sb.auth.signInWithPassword({
+    const { error } = await sb.auth.signInWithPassword({
       email: emailEl.value.trim(),
       password: passEl.value
     });
@@ -210,11 +215,11 @@
     const { data: { user } } = await sb.auth.getUser();
     if(!user){ loginMsg.textContent='กรุณาเข้าสู่ระบบ'; return; }
 
+    // ตรวจสิทธิ์แอดมิน
     const { data: profile } = await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
     if(!profile || !profile.is_admin){
       loginMsg.textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)';
-      await sb.auth.signOut();
-      return;
+      await sb.auth.signOut(); return;
     }
 
     adminNameEl.textContent = 'สวัสดี, ' + (profile.username || 'admin');
@@ -223,38 +228,38 @@
     appSection.classList.remove('hidden');
 
     setTab('bookings');
-    await Promise.all([loadBookings30Days(), loadCustomers()]);
+    await Promise.all([loadBookings30d(), loadCustomers()]);
   }
 
   // ===== Data Loaders =====
-  // ดึงคิวช่วง 30 วันถัดไป นับจากวันนี้ 00:00
-  async function loadBookings30Days(){
-    const now   = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0); // วันนี้ 00:00
-    const end   = new Date(start); end.setDate(end.getDate() + 30);                  // +30 วัน
+  function getRange30d(){
+    const from = new Date();
+    from.setHours(0,0,0,0);
+    const to = new Date(from);
+    to.setDate(to.getDate()+30);
+    return {from,to};
+  }
 
-    rangeLabelEl.textContent = `ช่วงเวลา: ${fmtDate(start)} 00:00 - ${fmtDate(end)} 00:00`;
+  async function loadBookings30d(){
+    const {from,to} = getRange30d();
+    rangeTextEl.textContent = `ช่วงเวลา: ${fmtDate(from)} 00:00 - ${fmtDate(to)} 00:00`;
 
     const { data: bookings, error } = await sb
       .from('bookings')
       .select('id,user_id,start_at,end_at,status,payment_method,notes, services(name,price), staff(display_name)')
-      .gte('start_at', start.toISOString())
-      .lt('start_at', end.toISOString())
+      .gte('start_at', from.toISOString()).lt('start_at', to.toISOString())
       .order('start_at', { ascending: true });
 
-    if (error) {
-      console.error(error);
-      bookingRows.innerHTML = `<tr><td colspan="6" class="muted">โหลดข้อมูลล้มเหลว: ${error.message}</td></tr>`;
-      return;
-    }
+    if(error){ alert('โหลดคิวไม่สำเร็จ: '+error.message); return; }
 
     bookingsRaw = bookings || [];
 
-    // โหลดโปรไฟล์ลูกค้า (เพื่อชื่อ)
     const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
     if(uids.length){
       const { data: profs } = await sb.from('profiles').select('id,username').in('id', uids);
       profilesMap = new Map((profs||[]).map(p=>[p.id, p]));
+    } else {
+      profilesMap = new Map();
     }
 
     renderBookings();
@@ -271,6 +276,10 @@
       const name = profilesMap.get(b.user_id)?.username || '—';
       const svc  = b.services?.name || '—';
       const stf  = b.staff?.display_name || '—';
+
+      // ปิดปุ่มเมื่อจบสถานะแล้ว
+      const isTerminal = (b.status === 'completed' || b.status === 'cancelled');
+
       return `<tr>
         <td>${fmtTime(b.start_at)}</td>
         <td>${name}</td>
@@ -278,9 +287,9 @@
         <td>${stf}</td>
         <td>${badge(b.status)}</td>
         <td class="row">
-          <button class="btn btn-ok"   onclick="setStatus('${b.id}','confirmed')">ยืนยัน</button>
-          <button class="btn btn-warn" onclick="setStatus('${b.id}','completed')">เสร็จสิ้น</button>
-          <button class="btn btn-err"  onclick="setStatus('${b.id}','cancelled')">ยกเลิก</button>
+          <!-- ✅ ไม่มีปุ่ม "ยืนยัน" แล้ว -->
+          <button class="btn btn-warn" ${isTerminal ? 'disabled' : ''} onclick="setStatus('${b.id}','completed')">เสร็จสิ้น</button>
+          <button class="btn btn-err"  ${isTerminal ? 'disabled' : ''} onclick="setStatus('${b.id}','cancelled')">ยกเลิก</button>
         </td>
       </tr>`;
     }).join('');
@@ -292,7 +301,7 @@
     if(!ok) return;
     const { error } = await sb.from('bookings').update({ status }).eq('id', id);
     if(error){ alert('อัปเดตไม่สำเร็จ: '+error.message); return; }
-    await loadBookings30Days();
+    await loadBookings30d();
   }
 
   async function loadCustomers(){
@@ -300,22 +309,14 @@
       .from('profiles')
       .select('id,username,is_admin,created_at')
       .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error(error);
-      customerRows.innerHTML = `<tr><td colspan="3" class="muted">โหลดข้อมูลล้มเหลว: ${error.message}</td></tr>`;
-      return;
-    }
-
+    if(error){ console.error(error); return; }
     customersRaw = rows || [];
     renderCustomers();
   }
 
   function renderCustomers(){
     const q = (searchCustomer.value||'').toLowerCase();
-    const rows = customersRaw.filter(p=>{
-      return (p.username||'').toLowerCase().includes(q);
-    }).map(p=>{
+    const rows = customersRaw.filter(p=>(p.username||'').toLowerCase().includes(q)).map(p=>{
       return `<tr>
         <td>${p.username || '—'}</td>
         <td>${p.is_admin ? 'Admin' : 'User'}</td>
@@ -325,10 +326,10 @@
     customerRows.innerHTML = rows || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
   }
 
-  // search & reload
+  // search & refresh
   searchBooking.addEventListener('input', renderBookings);
   searchCustomer.addEventListener('input', renderCustomers);
-  btnReload.addEventListener('click', loadBookings30Days);
+  btnReload.addEventListener('click', loadBookings30d);
 
   // ถ้ามี session ค้างไว้ ให้เข้าอัตโนมัติ
   (async ()=>{
@@ -338,5 +339,3 @@
 </script>
 </body>
 </html>
-
-

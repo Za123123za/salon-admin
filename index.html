@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Dashboard</title>
   <style>
-    :root{--teal:#00acc1;--bg:#f6f8fa;--card:#fff;--text:#111;--muted:#6b7280;--ok:#10b981;--warn:#f59e0b;--err:#ef4444}
+    :root{--teal:#00acc1;--bg:#f6f8fa;--card:#fff;--text:#111;--muted:#6b7280}
     *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
     body{margin:0;background:var(--bg);color:var(--text)}
     header{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--teal);color:#fff}
@@ -14,22 +14,44 @@
     .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
     .btn-ghost{background:#eef3f6;color:#111}
-    input, select{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
-    table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th,td{padding:10px 12px;text-align:left;vertical-align:middle}
-    th{color:#374151;font-size:13px}
-    tr{background:#fff}
-    tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
-    tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    input,select{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:var(--muted)} .hidden{display:none}
+
+    /* ===== Badges (รวมเก่า+ใหม่) ===== */
     .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
-    /* เดิม */
-    .b-pending{background:#fff7ed;color:#b45309}.b-confirmed{background:#ecfdf5;color:#065f46}.b-cancelled{background:#fef2f2;color:#b91c1c}.b-completed{background:#eef2ff;color:#3730a3}
-    /* ใหม่สำหรับ 3 สถานะ */
+    .b-pending{background:#fff7ed;color:#b45309}
+    .b-confirmed{background:#ecfdf5;color:#065f46}
+    .b-cancelled{background:#fef2f2;color:#b91c1c}
+    .b-completed{background:#eef2ff;color:#3730a3}
     .b-booked{background:#fff7ed;color:#b45309}
     .b-in_service{background:#eef2ff;color:#3730a3}
     .b-paid{background:#ecfdf5;color:#065f46}
-    .tabs{display:flex;gap:8px;margin-bottom:8px}.tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}.tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+    /* ===== Cards layout for bookings ===== */
+    .cards{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
+    @media (min-width:1024px){ .cards{grid-template-columns:1fr 1fr 1fr} }
+
+    .booking-card{
+      background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);
+      padding:14px; display:flex; flex-direction:column; gap:10px
+    }
+    .card-head{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .card-time{font-weight:800}
+    .card-body{display:flex; flex-direction:column; gap:6px}
+    .kv{display:flex; gap:8px; align-items:flex-start}
+    .kv .k{min-width:56px; color:var(--muted); font-size:12px}
+    .kv .v{font-weight:600}
+    .card-foot{display:flex; gap:10px; align-items:center; justify-content:space-between}
+    .statusSel{flex:1 1 auto}
+
+    /* ซ่อน table เดิม (เราใช้การ์ดแทน) */
+    table{display:none}
+
+    .tabs{display:flex;gap:8px;margin-bottom:8px}
+    .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+    .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+
     .login{max-width:420px;margin:40px auto}
     #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
     #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
@@ -74,7 +96,7 @@
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">คิวช่วง 30 วัน</h3>
         <div class="row">
-          <input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง" />
+          <input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง/ที่อยู่" />
           <button id="btnReload" class="btn btn-ghost" type="button">รีเฟรช</button>
         </div>
       </div>
@@ -82,19 +104,8 @@
       <div class="muted" id="rangeText"></div>
       <div style="height:10px"></div>
       <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>เวลา</th>
-              <th>ลูกค้า</th>
-              <th>บริการ</th>
-              <th>ช่าง</th>
-              <th>สถานะ</th>
-              <th>เปลี่ยนสถานะ</th>
-            </tr>
-          </thead>
-          <tbody id="bookingRows"></tbody>
-        </table>
+        <!-- การ์ดแสดงคิว -->
+        <div id="bookingCards" class="cards"></div>
       </div>
     </section>
 
@@ -136,10 +147,16 @@
     setTimeout(()=>el.classList.remove('show'), 2000);
   };
 
-  // แผนที่สถานะ (โค้ด <-> ป้ายภาษาไทย/คลาส)
-  const STATUS_LABELS = { booked:'จองแล้ว', in_service:'ลูกค้าเข้าใช้บริการ', paid:'ลูกค้าชำระเงินแล้ว' };
-  const STATUS_CLASS  = { booked:'b-booked', in_service:'b-in_service', paid:'b-paid',
-                          pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed' };
+  // แผนที่สถานะ (โค้ด <-> ป้ายไทย/คลาส)
+  const STATUS_LABELS = {
+    booked:'จองแล้ว',
+    in_service:'ลูกค้าเข้าใช้บริการ',
+    paid:'ลูกค้าชำระเงินแล้ว'
+  };
+  const STATUS_CLASS  = {
+    booked:'b-booked', in_service:'b-in_service', paid:'b-paid',
+    pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed'
+  };
 
   let sb = null;
 
@@ -226,18 +243,12 @@
   }
 
   let profilesMap = new Map(), bookingsRaw = [], customersRaw = [];
-  const badge = s => {
-    const cls = STATUS_CLASS[s] || 'b-pending';
-    const th  = STATUS_LABELS[s] || s; // ถ้าเป็นค่าเก่าจะโชว์ดิบ ๆ
-    return `<span class="badge ${cls}">${th}</span>`;
-  };
-  const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 
+  // ===== API: โหลดคิว 30 วัน + โปรไฟล์ (username,address) =====
   async function loadBookings30d(){
     const { from, to } = getRange30d();
     const { data: bookings, error } = await sb
       .from('bookings')
-      // NOTE: ดึง status ด้วย และดึง service กับ staff
       .select('id,user_id,start_at,end_at,status,services(name),staff(display_name)')
       .gte('start_at', from.toISOString()).lt('start_at', to.toISOString())
       .order('start_at', { ascending: true });
@@ -246,7 +257,7 @@
 
     const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
     if(uids.length){
-      const { data: profs } = await sb.from('profiles').select('id,username').in('id', uids);
+      const { data: profs } = await sb.from('profiles').select('id,username,address').in('id', uids);
       profilesMap = new Map((profs||[]).map(p=>[p.id,p]));
     }else{
       profilesMap = new Map();
@@ -254,42 +265,73 @@
     renderBookings();
   }
 
-  // ตัวเลือกสถานะใน select
+  // ===== Helper =====
   const statusOptions = [
-    { value:'booked', label: STATUS_LABELS.booked },
+    { value:'booked',     label: STATUS_LABELS.booked },
     { value:'in_service', label: STATUS_LABELS.in_service },
-    { value:'paid', label: STATUS_LABELS.paid },
+    { value:'paid',       label: STATUS_LABELS.paid },
   ];
+  function badge(s){
+    const cls = STATUS_CLASS[s] || 'b-pending';
+    const th  = STATUS_LABELS[s] || s;
+    return `<span class="badge ${cls}">${th}</span>`;
+  }
+  const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
+  // ===== Render เป็น “การ์ดแนวตั้ง” =====
   function renderBookings(){
     const q = ($('searchBooking').value||'').toLowerCase();
-    const rows = (bookingsRaw||[]).filter(b=>{
-      const name = profilesMap.get(b.user_id)?.username || '';
+
+    const list = (bookingsRaw||[]).filter(b=>{
+      const prof = profilesMap.get(b.user_id) || {};
+      const name = prof.username || '';
+      const addr = prof.address || '';
       const svc  = b.services?.name || '';
       const stf  = b.staff?.display_name || '';
-      return [name,svc,stf].some(x=>x.toLowerCase().includes(q));
-    }).map(b=>{
-      const name = profilesMap.get(b.user_id)?.username || '—';
+      return [name, svc, stf, addr].some(x => (x||'').toLowerCase().includes(q));
+    });
+
+    if (!list.length){
+      $('bookingCards').innerHTML = `<div class="muted" style="padding:8px 4px">— ไม่มีคิวในช่วงนี้ —</div>`;
+      return;
+    }
+
+    $('bookingCards').innerHTML = list.map(b=>{
+      const prof = profilesMap.get(b.user_id) || {};
+      const name = prof.username || '—';
+      const addr = prof.address || '—';
       const svc  = b.services?.name || '—';
       const stf  = b.staff?.display_name || '—';
 
-      // สร้าง dropdown เปลี่ยนสถานะ (ค่าเริ่มต้น = b.status)
-      const sel = `<select data-bid="${b.id}" class="statusSel">
-        ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
-      </select>`;
+      const sel = `
+        <select data-bid="${b.id}" class="statusSel">
+          ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
+        </select>
+      `;
 
-      return `<tr>
-        <td>${fmtTime(b.start_at)}</td>
-        <td>${name}</td>
-        <td>${svc}</td>
-        <td>${stf}</td>
-        <td>${badge(b.status)}</td>
-        <td>${sel}</td>
-      </tr>`;
+      return `
+        <div class="booking-card">
+          <div class="card-head">
+            <div class="card-time">${fmtTime(b.start_at)}</div>
+            ${badge(b.status)}
+          </div>
+
+          <div class="card-body">
+            <div class="kv"><div class="k">ลูกค้า</div><div class="v">${name}</div></div>
+            <div class="kv"><div class="k">บริการ</div><div class="v">${svc}</div></div>
+            <div class="kv"><div class="k">ช่าง</div><div class="v">${stf}</div></div>
+            <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
+          </div>
+
+          <div class="card-foot">
+            <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
+            ${sel}
+          </div>
+        </div>
+      `;
     }).join('');
-    $('bookingRows').innerHTML = rows || `<tr><td colspan="6" class="muted">— ไม่มีคิวในช่วงนี้ —</td></tr>`;
 
-    // bind change events หลัง render เสร็จ
+    // bind change events
     document.querySelectorAll('.statusSel').forEach(el=>{
       el.addEventListener('change', async (e)=>{
         const bookingId = e.target.getAttribute('data-bid');
@@ -299,12 +341,11 @@
     });
   }
 
+  // ===== Update สถานะ =====
   async function onChangeStatus(bookingId, newStatus){
     try{
       const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
       if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
-
-      // อัปเดตในหน่วยความจำและรีเรนเดอร์
       bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
       renderBookings();
       toast('อัปเดตสถานะเรียบร้อย');
@@ -313,15 +354,16 @@
     }
   }
 
+  // ===== Customers =====
   async function loadCustomers(){
     const { data: rows } = await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at', { ascending:false });
     customersRaw = rows || []; renderCustomers();
   }
   function renderCustomers(){
     const q = ($('searchCustomer').value||'').toLowerCase();
-    $('customerRows').innerHTML = customersRaw.filter(p=>(p.username||'').toLowerCase().includes(q)).map(p=>(
-      `<tr><td>${p.username||'—'}</td><td>${p.is_admin?'Admin':'User'}</td><td>${new Date(p.created_at).toLocaleDateString('th-TH')}</td></tr>`
-    )).join('') || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
+    $('customerRows').innerHTML = (customersRaw||[]).filter(p=>(p.username||'').toLowerCase().includes(q)).map(p=>(`
+      <tr><td>${p.username||'—'}</td><td>${p.is_admin?'Admin':'User'}</td><td>${new Date(p.created_at).toLocaleDateString('th-TH')}</td></tr>
+    `)).join('') || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
   }
 
   async function autoLoginIfSession(){

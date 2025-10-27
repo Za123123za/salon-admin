@@ -17,7 +17,7 @@
     input,select{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:var(--muted)} .hidden{display:none}
 
-    /* ===== Badges (รวมเก่า+ใหม่) ===== */
+    /* ===== Badges ===== */
     .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
     .b-pending{background:#fff7ed;color:#b45309}
     .b-confirmed{background:#ecfdf5;color:#065f46}
@@ -27,7 +27,7 @@
     .b-in_service{background:#eef2ff;color:#3730a3}
     .b-paid{background:#ecfdf5;color:#065f46}
 
-    /* ===== Cards layout for bookings ===== */
+    /* ===== Cards layout ===== */
     .cards{display:grid;grid-template-columns:1fr;gap:12px}
     @media (min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
     @media (min-width:1024px){ .cards{grid-template-columns:1fr 1fr 1fr} }
@@ -45,7 +45,7 @@
     .card-foot{display:flex; gap:10px; align-items:center; justify-content:space-between}
     .statusSel{flex:1 1 auto}
 
-    /* ซ่อน table เดิม (เราใช้การ์ดแทน) */
+    /* ซ่อน table แบบเดิม */
     table{display:none}
 
     .tabs{display:flex;gap:8px;margin-bottom:8px}
@@ -104,7 +104,6 @@
       <div class="muted" id="rangeText"></div>
       <div style="height:10px"></div>
       <div class="card">
-        <!-- การ์ดแสดงคิว -->
         <div id="bookingCards" class="cards"></div>
       </div>
     </section>
@@ -147,20 +146,13 @@
     setTimeout(()=>el.classList.remove('show'), 2000);
   };
 
-  // แผนที่สถานะ (โค้ด <-> ป้ายไทย/คลาส)
-  const STATUS_LABELS = {
-    booked:'จองแล้ว',
-    in_service:'ลูกค้าเข้าใช้บริการ',
-    paid:'ลูกค้าชำระเงินแล้ว'
-  };
-  const STATUS_CLASS  = {
-    booked:'b-booked', in_service:'b-in_service', paid:'b-paid',
-    pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed'
-  };
+  // Map สถานะ
+  const STATUS_LABELS = { booked:'จองแล้ว', in_service:'ลูกค้าเข้าใช้บริการ', paid:'ลูกค้าชำระเงินแล้ว' };
+  const STATUS_CLASS  = { booked:'b-booked', in_service:'b-in_service', paid:'b-paid',
+                          pending:'b-pending', confirmed:'b-confirmed', cancelled:'b-cancelled', completed:'b-completed' };
 
   let sb = null;
 
-  // รอให้ <script defer> โหลดเสร็จก่อน
   window.addEventListener('DOMContentLoaded', () => {
     try {
       if (!window.supabase) { showSys('โหลดไลบรารีไม่สำเร็จ (CDN) — กรุณารีเฟรชหน้าอีกครั้ง'); return; }
@@ -182,6 +174,18 @@
     $('btnReload').addEventListener('click', loadBookings30d);
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
+
+    // Event delegation: ฟังการเปลี่ยนสถานะจาก container เดียว
+    $('bookingCards').addEventListener('change', async (e)=>{
+      const el = e.target;
+      if (el && el.classList.contains('statusSel')) {
+        const bookingId = el.getAttribute('data-bid');
+        const newStatus = el.value;
+        el.disabled = true;              // กันกดซ้ำตอนกำลังอัปเดต
+        await onChangeStatus(bookingId, newStatus);
+        el.disabled = false;
+      }
+    });
   }
 
   async function onLogin(){
@@ -244,7 +248,6 @@
 
   let profilesMap = new Map(), bookingsRaw = [], customersRaw = [];
 
-  // ===== API: โหลดคิว 30 วัน + โปรไฟล์ (username,address) =====
   async function loadBookings30d(){
     const { from, to } = getRange30d();
     const { data: bookings, error } = await sb
@@ -265,12 +268,13 @@
     renderBookings();
   }
 
-  // ===== Helper =====
+  // ตัวเลือกสถานะ
   const statusOptions = [
     { value:'booked',     label: STATUS_LABELS.booked },
     { value:'in_service', label: STATUS_LABELS.in_service },
     { value:'paid',       label: STATUS_LABELS.paid },
   ];
+
   function badge(s){
     const cls = STATUS_CLASS[s] || 'b-pending';
     const th  = STATUS_LABELS[s] || s;
@@ -278,7 +282,7 @@
   }
   const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
-  // ===== Render เป็น “การ์ดแนวตั้ง” =====
+  // เรนเดอร์เป็นการ์ด
   function renderBookings(){
     const q = ($('searchBooking').value||'').toLowerCase();
 
@@ -310,10 +314,10 @@
       `;
 
       return `
-        <div class="booking-card">
+        <div class="booking-card" data-bid="${b.id}">
           <div class="card-head">
             <div class="card-time">${fmtTime(b.start_at)}</div>
-            ${badge(b.status)}
+            <div class="badge-wrap">${badge(b.status)}</div>
           </div>
 
           <div class="card-body">
@@ -330,31 +334,30 @@
         </div>
       `;
     }).join('');
-
-    // bind change events
-    document.querySelectorAll('.statusSel').forEach(el=>{
-      el.addEventListener('change', async (e)=>{
-        const bookingId = e.target.getAttribute('data-bid');
-        const newStatus = e.target.value;
-        await onChangeStatus(bookingId, newStatus);
-      });
-    });
   }
 
-  // ===== Update สถานะ =====
+  // อัปเดตสถานะ (อัปเดตเฉพาะการ์ด ไม่เรียก renderBookings ทันที)
   async function onChangeStatus(bookingId, newStatus){
     try{
       const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
       if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
+
+      // อัปเดตในหน่วยความจำ
       bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
-      renderBookings();
+
+      // อัปเดต badge เฉพาะการ์ด
+      const card = document.querySelector(`.booking-card[data-bid="${bookingId}"] .badge-wrap`);
+      if(card){ card.innerHTML = badge(newStatus); }
+
       toast('อัปเดตสถานะเรียบร้อย');
+      // ถ้าอยากรีเฟรชจากเซิร์ฟเวอร์จริง ๆ (หลีกเลี่ยงวนซ้ำ):
+      // setTimeout(()=> loadBookings30d(), 300);
     }catch(e){
       toast('เกิดข้อผิดพลาด: '+e.message, false);
     }
   }
 
-  // ===== Customers =====
+  // Customers
   async function loadCustomers(){
     const { data: rows } = await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at', { ascending:false });
     customersRaw = rows || []; renderCustomers();

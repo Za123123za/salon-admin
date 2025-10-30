@@ -16,7 +16,6 @@
     .btn-ghost{background:#eef3f6;color:#111}
     input,select,button{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:var(--muted)} .hidden{display:none}
-    .link{color:#00acc1;text-decoration:underline;background:transparent;border:0;cursor:pointer;padding:0}
 
     /* Badges */
     .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
@@ -40,27 +39,23 @@
     .card-foot{display:flex;gap:10px;align-items:center;justify-content:space-between}
     .statusSel{flex:1 1 auto}
 
-    /* Tabs */
-    .tabs{display:flex;gap:8px;margin-bottom:8px}
-    .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
-    .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+    .group-title{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 10px 2px}
+    .group-title h4{margin:0;font-size:16px}
+    .pill{background:#eef3f6;border-radius:999px;padding:4px 8px;font-size:12px}
 
-    /* Customers table */
     table{width:100%;border-collapse:separate;border-spacing:0 8px}
     th,td{padding:10px 12px;text-align:left;background:#fff}
     tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
     tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
 
-    /* Group/Section (accordion) */
-    details.group{background:#ffffff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);margin-bottom:12px}
-    details.group > summary{
-      list-style:none;cursor:pointer;padding:12px 14px;border-radius:12px;
-      display:flex;align-items:center;justify-content:space-between;gap:10px
-    }
-    details.group > summary::-webkit-details-marker{display:none}
-    .group-title{display:flex;align-items:center;gap:10px;font-weight:800}
-    .count{background:#eef3f6;border-radius:999px;padding:4px 10px;font-size:12px}
-    .group-body{padding:10px 14px 14px}
+    .tabs{display:flex;gap:8px;margin-bottom:8px}
+    .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+    .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+    .login{max-width:420px;margin:40px auto}
+    #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
+    #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
+    #toast.show{opacity:1}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -96,7 +91,6 @@
       <button id="tabCustomers" type="button">ผู้ใช้</button>
     </div>
 
-    <!-- BOOKINGS -->
     <section id="bookingsPanel" class="card">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">คิวช่วง 30 วัน</h3>
@@ -110,11 +104,32 @@
       <div class="muted" id="rangeText"></div>
       <div style="height:10px"></div>
 
-      <!-- กลุ่มผลลัพธ์ -->
-      <div id="groupsContainer"></div>
+      <!-- กลุ่มตามสถานะ -->
+      <div class="card">
+        <div class="group-title">
+          <h4>จองแล้ว</h4>
+          <span class="pill" id="countBooked">0 รายการ</span>
+        </div>
+        <div id="groupBooked" class="cards"></div>
+      </div>
+
+      <div class="card">
+        <div class="group-title">
+          <h4>ผู้ใช้เข้าใช้บริการ</h4>
+          <span class="pill" id="countInService">0 รายการ</span>
+        </div>
+        <div id="groupInService" class="cards"></div>
+      </div>
+
+      <div class="card">
+        <div class="group-title">
+          <h4>ผู้ใช้ชำระเงินแล้ว</h4>
+          <span class="pill" id="countPaid">0 รายการ</span>
+        </div>
+        <div id="groupPaid" class="cards"></div>
+      </div>
     </section>
 
-    <!-- CUSTOMERS -->
     <section id="customersPanel" class="card hidden">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">ผู้ใช้</h3>
@@ -126,7 +141,7 @@
           <thead>
             <tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th><th></th></tr>
           </thead>
-          <tbody id="customerRows"></tbody>
+        <tbody id="customerRows"></tbody>
         </table>
       </div>
     </section>
@@ -136,7 +151,7 @@
 <div id="toast"></div>
 
 <script>
-  // ====== CONFIG ======
+  // ====== CONFIG (ใช้ค่าของคุณเอง) ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
@@ -153,23 +168,28 @@
     setTimeout(()=>el.classList.remove('show'), 2000);
   };
 
+  // สถานะแผนที่
   const STATUS_LABELS = {
     booked:'จองแล้ว',
     in_service:'ผู้ใช้เข้าใช้บริการ',
-    paid:'ผู้ใช้ชำระเงินแล้ว'
+    paid:'ผู้ใช้ชำระเงินแล้ว',
+    cancelled:'ยกเลิก'
   };
   const STATUS_CLASS  = { booked:'b-booked', in_service:'b-in_service', paid:'b-paid', cancelled:'b-cancelled' };
 
   let sb = null;
-
-  // ฟิลเตอร์ผู้ใช้ (มาจากแท็บผู้ใช้)
-  let filterUserId = null;
+  let filterUserId = null; // ถ้าดูจากหน้า "ผู้ใช้" จะกรองเฉพาะคนนั้น
 
   window.addEventListener('DOMContentLoaded', () => {
-    if (!window.supabase) { showSys('โหลดไลบรารีไม่สำเร็จ (CDN) — กรุณารีเฟรชหน้าอีกครั้ง'); return; }
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    bindEvents();
-    autoLoginIfSession();
+    try {
+      if (!window.supabase) { showSys('โหลดไลบรารีไม่สำเร็จ (CDN) — กรุณารีเฟรชหน้าอีกครั้ง'); return; }
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      bindEvents();
+      autoLoginIfSession();
+    } catch (e) {
+      console.error(e);
+      showSys('ตั้งค่า Supabase ไม่สำเร็จ: ' + e.message);
+    }
   });
 
   function bindEvents(){
@@ -182,8 +202,8 @@
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
 
-    // เปลี่ยนสถานะ (delegation)
-    document.addEventListener('change', async (e)=>{
+    // เปลี่ยนสถานะ (ใช้ event delegation จาก container ทั้งหน้า)
+    document.body.addEventListener('change', async (e)=>{
       const el = e.target;
       if (el && el.classList.contains('statusSel')) {
         const bookingId = el.getAttribute('data-bid');
@@ -227,6 +247,7 @@
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ $('loginMsg').textContent='กรุณาเข้าสู่ระบบ'; return; }
 
+    // ตรวจสิทธิ์แอดมิน
     const { data: profile, error } =
       await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
 
@@ -259,7 +280,8 @@
 
     let q = sb.from('bookings')
       .select('id,user_id,start_at,end_at,status,services(name),staff(display_name)')
-      .gte('start_at', from.toISOString()).lt('start_at', to.toISOString())
+      .gte('start_at', from.toISOString())
+      .lt('start_at', to.toISOString())
       .order('start_at', { ascending: true });
 
     if (filterUserId) q = q.eq('user_id', filterUserId);
@@ -268,6 +290,7 @@
     if (error) { showSys('โหลดคิวไม่สำเร็จ: '+error.message); return; }
     bookingsRaw = bookings || [];
 
+    // โหลดโปรไฟล์ผู้ใช้ของรายการที่ดึงมา
     const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
     if(uids.length){
       const { data: profs } = await sb.from('profiles').select('id,username,address').in('id', uids);
@@ -275,18 +298,57 @@
     }else{
       profilesMap = new Map();
     }
+
     renderBookings();
   }
 
-  // ===== Render (Grouped) =====
+  const statusOptions = [
+    { value:'booked',     label: STATUS_LABELS.booked },
+    { value:'in_service', label: STATUS_LABELS.in_service },
+    { value:'paid',       label: STATUS_LABELS.paid },
+  ];
+
   const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   const badge = s => `<span class="badge ${STATUS_CLASS[s]||'b-booked'}">${STATUS_LABELS[s]||s}</span>`;
 
+  function makeCard(b){
+    const prof = profilesMap.get(b.user_id) || {};
+    const name = prof.username || '—';
+    const addr = prof.address || '—';
+    const svc  = b.services?.name || '—';
+    const stf  = b.staff?.display_name || '—';
+
+    const sel = `
+      <select data-bid="${b.id}" class="statusSel">
+        ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
+      </select>
+    `;
+    return `
+      <div class="booking-card" data-bid="${b.id}">
+        <div class="card-head">
+          <div class="card-time">${fmtTime(b.start_at)}</div>
+          <div class="badge-wrap">${badge(b.status)}</div>
+        </div>
+        <div class="card-body">
+          <div class="kv"><div class="k">ลูกค้า</div><div class="v">${name}</div></div>
+          <div class="kv"><div class="k">บริการ</div><div class="v">${svc}</div></div>
+          <div class="kv"><div class="k">ช่าง</div><div class="v">${stf}</div></div>
+          <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
+        </div>
+        <div class="card-foot">
+          <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
+          ${sel}
+        </div>
+      </div>
+    `;
+  }
+
   function renderBookings(){
+    // ข้อความค้นหา
     const q = ($('searchBooking').value||'').toLowerCase();
 
-    // filter by search + (optional) user
-    const list = (bookingsRaw||[]).filter(b=>{
+    // กรองตามค้นหา + filterUserId (บน query เราคัด user แล้ว แต่กันซ้ำอีกชั้น)
+    const filtered = (bookingsRaw||[]).filter(b=>{
       const prof = profilesMap.get(b.user_id) || {};
       const name = prof.username || '';
       const addr = prof.address || '';
@@ -297,83 +359,33 @@
       return okSearch && okFilter;
     });
 
-    const groups = {
-      all: list,
-      booked: list.filter(b=>b.status==='booked'),
-      in_service: list.filter(b=>b.status==='in_service'),
-      paid: list.filter(b=>b.status==='paid'),
-    };
+    // แบ่งหมวด
+    const listBooked = filtered.filter(b => b.status === 'booked');
+    const listInSrv  = filtered.filter(b => b.status === 'in_service');
+    const listPaid   = filtered.filter(b => b.status === 'paid');
 
-    const container = $('groupsContainer');
-    if (!list.length){
-      container.innerHTML = `<div class="muted" style="padding:8px 4px">— ไม่มีคิวในช่วงนี้ —</div>`;
-      return;
-    }
+    // เรนเดอร์แต่ละหมวด (การ์ดจะอยู่เพียงหมวดเดียว)
+    $('groupBooked').innerHTML   = listBooked.map(makeCard).join('') || `<div class="muted">— ว่าง —</div>`;
+    $('groupInService').innerHTML= listInSrv.map(makeCard).join('')  || `<div class="muted">— ว่าง —</div>`;
+    $('groupPaid').innerHTML     = listPaid.map(makeCard).join('')   || `<div class="muted">— ว่าง —</div>`;
 
-    container.innerHTML = [
-      makeGroup('การจองทั้งหมด', groups.all, 'all', true),
-      makeGroup('จองแล้ว', groups.booked, 'booked'),
-      makeGroup('ผู้ใช้เข้าใช้บริการ', groups.in_service, 'in_service'),
-      makeGroup('ชำระเงินแล้ว', groups.paid, 'paid'),
-    ].join('');
+    // อัปเดตตัวเลข
+    $('countBooked').textContent    = `${listBooked.length} รายการ`;
+    $('countInService').textContent = `${listInSrv.length} รายการ`;
+    $('countPaid').textContent      = `${listPaid.length} รายการ`;
   }
 
-  function makeGroup(title, items, key, open=false){
-    const cards = items.map(b=>{
-      const prof = profilesMap.get(b.user_id) || {};
-      const name = prof.username || '—';
-      const addr = prof.address || '—';
-      const svc  = b.services?.name || '—';
-      const stf  = b.staff?.display_name || '—';
-
-      const sel = `
-        <select data-bid="${b.id}" class="statusSel">
-          <option value="booked" ${b.status==='booked'?'selected':''}>${STATUS_LABELS.booked}</option>
-          <option value="in_service" ${b.status==='in_service'?'selected':''}>${STATUS_LABELS.in_service}</option>
-          <option value="paid" ${b.status==='paid'?'selected':''}>${STATUS_LABELS.paid}</option>
-        </select>
-      `;
-
-      return `
-        <div class="booking-card" data-bid="${b.id}">
-          <div class="card-head">
-            <div class="card-time">${fmtTime(b.start_at)}</div>
-            <div class="badge-wrap">${badge(b.status)}</div>
-          </div>
-          <div class="card-body">
-            <div class="kv"><div class="k">ลูกค้า</div><div class="v">${name}</div></div>
-            <div class="kv"><div class="k">บริการ</div><div class="v">${svc}</div></div>
-            <div class="kv"><div class="k">ช่าง</div><div class="v">${stf}</div></div>
-            <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
-          </div>
-          <div class="card-foot">
-            <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
-            ${sel}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <details class="group"${open?' open':''}>
-        <summary>
-          <span class="group-title">${title}</span>
-          <span class="count">${items.length} รายการ</span>
-        </summary>
-        <div class="group-body">
-          <div class="cards">${cards || `<div class="muted">— ไม่มีรายการ —</div>`}</div>
-        </div>
-      </details>
-    `;
-  }
-
+  // ✅ เปลี่ยนสถานะ แล้วจัดกลุ่มใหม่ทั้งหน้า (การ์ดย้ายหมวดทันที)
   async function onChangeStatus(bookingId, newStatus){
     try{
       const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
       if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
-      // อัปเดต memory
+
+      // อัปเดตในหน่วยความจำ
       bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
-      renderBookings(); // เรนเดอร์ใหม่เพื่อย้ายการ์ดไปหมวดที่ถูกต้อง
+
+      // เรนเดอร์ใหม่ -> การ์ดย้ายหมวด (หายจากหมวดเดิม)
+      renderBookings();
       toast('อัปเดตสถานะเรียบร้อย');
     }catch(e){
       toast('เกิดข้อผิดพลาด: '+e.message, false);
@@ -388,7 +400,7 @@
 
   function renderCustomers(){
     const q = ($('searchCustomer').value||'').toLowerCase();
-    $('customerRows').innerHTML = (customersRaw||[])
+    const rows = (customersRaw||[])
       .filter(p => (p.username||'').toLowerCase().includes(q))
       .map(p => `
         <tr>
@@ -397,10 +409,11 @@
           <td>${new Date(p.created_at).toLocaleDateString('th-TH')}</td>
           <td><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button></td>
         </tr>
-      `).join('') || `<tr><td colspan="4" class="muted">— ไม่มีข้อมูล —</td></tr>`;
+      `).join('');
+    $('customerRows').innerHTML = rows || `<tr><td colspan="4" class="muted">— ไม่มีข้อมูล —</td></tr>`;
   }
 
-  // คลิกจากแท็บผู้ใช้ → ไปแท็บคิว และกรองด้วย user_id
+  // ดูการจองเฉพาะผู้ใช้จากแท็บผู้ใช้
   window.viewUserBookings = async (uid) => {
     filterUserId = uid;
     setTab('bookings');

@@ -17,14 +17,12 @@
     input,select,button{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:var(--muted)} .hidden{display:none}
 
-    /* Badges */
     .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
     .b-booked{background:#fff7ed;color:#b45309}
     .b-in_service{background:#eef2ff;color:#3730a3}
     .b-paid{background:#ecfdf5;color:#065f46}
     .b-cancelled{background:#fef2f2;color:#b91c1c}
 
-    /* Cards layout */
     .cards{display:grid;grid-template-columns:1fr;gap:12px}
     @media (min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
     @media (min-width:1024px){ .cards{grid-template-columns:1fr 1fr 1fr} }
@@ -56,6 +54,10 @@
     #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
     #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
     #toast.show{opacity:1}
+
+    /* Chat panel */
+    #chatPanel{position:fixed; right:16px; bottom:16px; width:360px; max-height:74vh; display:flex; flex-direction:column; z-index:20}
+    #chatMessages{margin-top:8px; padding:8px; background:#f6f8fa; border-radius:10px; overflow:auto; flex:1 1 auto}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -104,7 +106,6 @@
       <div class="muted" id="rangeText"></div>
       <div style="height:10px"></div>
 
-      <!-- กลุ่มตามสถานะ -->
       <div class="card">
         <div class="group-title">
           <h4>จองแล้ว</h4>
@@ -141,21 +142,32 @@
           <thead>
             <tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th><th></th></tr>
           </thead>
-        <tbody id="customerRows"></tbody>
+          <tbody id="customerRows"></tbody>
         </table>
       </div>
     </section>
   </div>
 </div>
 
+<!-- Chat Panel -->
+<div id="chatPanel" class="card hidden">
+  <div class="row" style="justify-content:space-between">
+    <strong id="chatTitle">แชท</strong>
+    <button class="btn btn-ghost" type="button" onclick="closeChat()">ปิด</button>
+  </div>
+  <div id="chatMessages"></div>
+  <div class="row" style="margin-top:8px;">
+    <input id="chatInput" placeholder="พิมพ์ข้อความ..." style="flex:1 1 auto" />
+    <button class="btn" type="button" onclick="sendChat()">ส่ง</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
-  // ====== CONFIG (ใช้ค่าของคุณเอง) ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
-  // ====== Utils ======
   const $ = (id)=>document.getElementById(id);
   const sysBox = $('sysMsg');
   const showSys = (msg)=>{ sysBox.textContent = msg; sysBox.classList.remove('hidden'); };
@@ -168,28 +180,16 @@
     setTimeout(()=>el.classList.remove('show'), 2000);
   };
 
-  // สถานะแผนที่
-  const STATUS_LABELS = {
-    booked:'จองแล้ว',
-    in_service:'ผู้ใช้เข้าใช้บริการ',
-    paid:'ผู้ใช้ชำระเงินแล้ว',
-    cancelled:'ยกเลิก'
-  };
+  const STATUS_LABELS = { booked:'จองแล้ว', in_service:'ผู้ใช้เข้าใช้บริการ', paid:'ผู้ใช้ชำระเงินแล้ว', cancelled:'ยกเลิก' };
   const STATUS_CLASS  = { booked:'b-booked', in_service:'b-in_service', paid:'b-paid', cancelled:'b-cancelled' };
 
   let sb = null;
-  let filterUserId = null; // ถ้าดูจากหน้า "ผู้ใช้" จะกรองเฉพาะคนนั้น
+  let filterUserId = null;
 
   window.addEventListener('DOMContentLoaded', () => {
-    try {
-      if (!window.supabase) { showSys('โหลดไลบรารีไม่สำเร็จ (CDN) — กรุณารีเฟรชหน้าอีกครั้ง'); return; }
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      bindEvents();
-      autoLoginIfSession();
-    } catch (e) {
-      console.error(e);
-      showSys('ตั้งค่า Supabase ไม่สำเร็จ: ' + e.message);
-    }
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    bindEvents();
+    autoLoginIfSession();
   });
 
   function bindEvents(){
@@ -202,7 +202,6 @@
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
 
-    // เปลี่ยนสถานะ (ใช้ event delegation จาก container ทั้งหน้า)
     document.body.addEventListener('change', async (e)=>{
       const el = e.target;
       if (el && el.classList.contains('statusSel')) {
@@ -231,6 +230,7 @@
     $('appSection').classList.add('hidden');
     $('loginSection').classList.remove('hidden');
     $('loginMsg').textContent = 'ออกจากระบบแล้ว';
+    closeChat();
   }
 
   function setTab(which){
@@ -247,7 +247,6 @@
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ $('loginMsg').textContent='กรุณาเข้าสู่ระบบ'; return; }
 
-    // ตรวจสิทธิ์แอดมิน
     const { data: profile, error } =
       await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
 
@@ -290,7 +289,6 @@
     if (error) { showSys('โหลดคิวไม่สำเร็จ: '+error.message); return; }
     bookingsRaw = bookings || [];
 
-    // โหลดโปรไฟล์ผู้ใช้ของรายการที่ดึงมา
     const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
     if(uids.length){
       const { data: profs } = await sb.from('profiles').select('id,username,address').in('id', uids);
@@ -323,6 +321,7 @@
         ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
       </select>
     `;
+    const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
     return `
       <div class="booking-card" data-bid="${b.id}">
         <div class="card-head">
@@ -336,18 +335,19 @@
           <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
         </div>
         <div class="card-foot">
-          <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
-          ${sel}
+          <div class="row" style="gap:8px">
+            <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
+            ${sel}
+          </div>
+          ${chatBtn}
         </div>
       </div>
     `;
   }
 
   function renderBookings(){
-    // ข้อความค้นหา
     const q = ($('searchBooking').value||'').toLowerCase();
 
-    // กรองตามค้นหา + filterUserId (บน query เราคัด user แล้ว แต่กันซ้ำอีกชั้น)
     const filtered = (bookingsRaw||[]).filter(b=>{
       const prof = profilesMap.get(b.user_id) || {};
       const name = prof.username || '';
@@ -359,32 +359,24 @@
       return okSearch && okFilter;
     });
 
-    // แบ่งหมวด
     const listBooked = filtered.filter(b => b.status === 'booked');
     const listInSrv  = filtered.filter(b => b.status === 'in_service');
     const listPaid   = filtered.filter(b => b.status === 'paid');
 
-    // เรนเดอร์แต่ละหมวด (การ์ดจะอยู่เพียงหมวดเดียว)
-    $('groupBooked').innerHTML   = listBooked.map(makeCard).join('') || `<div class="muted">— ว่าง —</div>`;
-    $('groupInService').innerHTML= listInSrv.map(makeCard).join('')  || `<div class="muted">— ว่าง —</div>`;
-    $('groupPaid').innerHTML     = listPaid.map(makeCard).join('')   || `<div class="muted">— ว่าง —</div>`;
+    $('groupBooked').innerHTML    = listBooked.map(makeCard).join('') || `<div class="muted">— ว่าง —</div>`;
+    $('groupInService').innerHTML = listInSrv.map(makeCard).join('')  || `<div class="muted">— ว่าง —</div>`;
+    $('groupPaid').innerHTML      = listPaid.map(makeCard).join('')   || `<div class="muted">— ว่าง —</div>`;
 
-    // อัปเดตตัวเลข
     $('countBooked').textContent    = `${listBooked.length} รายการ`;
     $('countInService').textContent = `${listInSrv.length} รายการ`;
     $('countPaid').textContent      = `${listPaid.length} รายการ`;
   }
 
-  // ✅ เปลี่ยนสถานะ แล้วจัดกลุ่มใหม่ทั้งหน้า (การ์ดย้ายหมวดทันที)
   async function onChangeStatus(bookingId, newStatus){
     try{
       const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
       if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
-
-      // อัปเดตในหน่วยความจำ
       bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
-
-      // เรนเดอร์ใหม่ -> การ์ดย้ายหมวด (หายจากหมวดเดิม)
       renderBookings();
       toast('อัปเดตสถานะเรียบร้อย');
     }catch(e){
@@ -407,13 +399,17 @@
           <td>${p.username||'—'}</td>
           <td>${p.is_admin?'Admin':'User'}</td>
           <td>${new Date(p.created_at).toLocaleDateString('th-TH')}</td>
-          <td><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button></td>
+          <td>
+            <div class="row">
+              <button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button>
+              <button class="btn btn-ghost" onclick="openChatWith('${p.id}','${(p.username||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>
+            </div>
+          </td>
         </tr>
       `).join('');
     $('customerRows').innerHTML = rows || `<tr><td colspan="4" class="muted">— ไม่มีข้อมูล —</td></tr>`;
   }
 
-  // ดูการจองเฉพาะผู้ใช้จากแท็บผู้ใช้
   window.viewUserBookings = async (uid) => {
     filterUserId = uid;
     setTab('bookings');
@@ -424,6 +420,116 @@
   async function autoLoginIfSession(){
     const { data:{session} } = await sb.auth.getSession();
     if (session) initApp();
+  }
+
+  /* ======================= Admin Chat ======================= */
+
+  // state
+  let chatPeerId = null;
+  let chatSubscription = null;
+
+  function computeChatId(a, b){
+    const ids = [a,b].sort();
+    return ids[0] + '_' + ids[1];
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  async function openChatWith(peerId, peerName='ผู้ใช้'){
+    try{
+      const { data:{ user } } = await sb.auth.getUser();
+      if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
+
+      chatPeerId = peerId;
+      $('chatTitle').textContent = `แชทกับ: ${peerName}`;
+      $('chatPanel').classList.remove('hidden');
+      $('chatMessages').innerHTML = 'กำลังโหลด...';
+
+      if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
+
+      const chatId = computeChatId(user.id, peerId);
+
+      // load history
+      const { data: rows, error } = await sb
+        .from('messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('created_at', { ascending: true });
+
+      if (error) { $('chatMessages').innerHTML = 'โหลดข้อความไม่สำเร็จ'; return; }
+      renderChatRows(rows || [], user.id);
+
+      // realtime
+      chatSubscription = sb
+        .channel('realtime:messages:'+chatId)
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+          payload => {
+            if (payload.eventType === 'INSERT') {
+              appendChatRow(payload.new, user.id);
+            }
+          }
+        ).subscribe();
+
+    }catch(e){
+      console.error(e);
+      toast('เปิดห้องแชทไม่สำเร็จ', false);
+    }
+  }
+
+  function closeChat(){
+    $('chatPanel').classList.add('hidden');
+    if (chatSubscription){ chatSubscription.unsubscribe(); chatSubscription = null; }
+    chatPeerId = null;
+  }
+
+  function renderChatRows(rows, myId){
+    const box = $('chatMessages');
+    if(!rows.length){ box.innerHTML = '<div class="muted">— ยังไม่มีข้อความ —</div>'; return; }
+    box.innerHTML = rows.map(m=>{
+      const mine = m.sender_id === myId;
+      return `
+        <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
+          <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
+            ${escapeHtml(m.content||'')}
+          </div>
+        </div>
+      `;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function appendChatRow(m, myId){
+    const box = $('chatMessages');
+    if (box.innerHTML.includes('ยังไม่มีข้อความ')) box.innerHTML = '';
+    const mine = m.sender_id === myId;
+    const html = `
+      <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
+        <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
+          ${escapeHtml(m.content||'')}
+        </div>
+      </div>`;
+    box.insertAdjacentHTML('beforeend', html);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendChat(){
+    const txt = ($('chatInput').value||'').trim();
+    if(!txt) return;
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user || !chatPeerId){ toast('ยังไม่มีห้องแชท', false); return; }
+    const chatId = computeChatId(user.id, chatPeerId);
+
+    $('chatInput').value = '';
+    const { error } = await sb.from('messages').insert({
+      chat_id: chatId,            // มี trigger ช่วย validate ให้ถูกต้อง
+      sender_id: user.id,         // ต้องเป็นผู้ส่ง = ตัวเอง (RLS)
+      receiver_id: chatPeerId,
+      content: txt
+    });
+    if (error) toast('ส่งไม่สำเร็จ: '+error.message, false);
   }
 </script>
 </body>

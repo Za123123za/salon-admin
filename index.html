@@ -55,9 +55,21 @@
     #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
     #toast.show{opacity:1}
 
-    /* Chat panel */
-    #chatPanel{position:fixed; right:16px; bottom:16px; width:360px; max-height:74vh; display:flex; flex-direction:column; z-index:20}
-    #chatMessages{margin-top:8px; padding:8px; background:#f6f8fa; border-radius:10px; overflow:auto; flex:1 1 auto}
+    /* ====== Chats (full page) ====== */
+    #chatsLayout{display:grid;grid-template-columns:280px 1fr;gap:14px;min-height:540px}
+    #chatList{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:auto}
+    .cl-head{padding:12px;border-bottom:1px solid #eef2f7;font-weight:700}
+    .cl-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f2f4f7;cursor:pointer}
+    .cl-item:hover{background:#f9fbfc}
+    .cl-name{font-weight:700}
+    .cl-snippet{font-size:12px;color:#6b7280}
+    .cl-time{margin-left:auto;font-size:12px;color:#9ca3af}
+    .selected{background:#eef8fb}
+    #chatView{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);display:flex;flex-direction:column}
+    #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
+    #chatMessages{flex:1 1 auto;overflow:auto;padding:10px;background:#f6f8fa}
+    #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7}
+    #chatComposer input{flex:1 1 auto}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -91,8 +103,10 @@
     <div class="tabs">
       <button id="tabBookings" class="active" type="button">คิวช่วง 30 วัน</button>
       <button id="tabCustomers" type="button">ผู้ใช้</button>
+      <button id="tabChats" type="button">แชท</button>
     </div>
 
+    <!-- BOOKINGS -->
     <section id="bookingsPanel" class="card">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">คิวช่วง 30 วัน</h3>
@@ -131,6 +145,7 @@
       </div>
     </section>
 
+    <!-- CUSTOMERS -->
     <section id="customersPanel" class="card hidden">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">ผู้ใช้</h3>
@@ -146,28 +161,38 @@
         </table>
       </div>
     </section>
-  </div>
-</div>
 
-<!-- Chat Panel -->
-<div id="chatPanel" class="card hidden">
-  <div class="row" style="justify-content:space-between">
-    <strong id="chatTitle">แชท</strong>
-    <button class="btn btn-ghost" type="button" onclick="closeChat()">ปิด</button>
-  </div>
-  <div id="chatMessages"></div>
-  <div class="row" style="margin-top:8px;">
-    <input id="chatInput" placeholder="พิมพ์ข้อความ..." style="flex:1 1 auto" />
-    <button class="btn" type="button" onclick="sendChat()">ส่ง</button>
+    <!-- CHATS -->
+    <section id="chatsPanel" class="hidden">
+      <div id="chatsLayout">
+        <div id="chatList">
+          <div class="cl-head">ผู้ใช้ที่คุยด้วย</div>
+          <div id="chatListItems"></div>
+        </div>
+        <div id="chatView">
+          <div id="chatHeader">
+            <strong id="chatTitle">เลือกผู้ใช้ทางซ้ายเพื่อเริ่มคุย</strong>
+            <span id="chatHeaderRight" class="muted"></span>
+          </div>
+          <div id="chatMessages"></div>
+          <div id="chatComposer">
+            <input id="chatInput" placeholder="พิมพ์ข้อความ..." />
+            <button class="btn" type="button" id="btnSend">ส่ง</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
+  // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
+  // ====== Utils ======
   const $ = (id)=>document.getElementById(id);
   const sysBox = $('sysMsg');
   const showSys = (msg)=>{ sysBox.textContent = msg; sysBox.classList.remove('hidden'); };
@@ -197,11 +222,14 @@
     $('btnSignOut').addEventListener('click', onSignOut);
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
     $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
+    $('tabChats').addEventListener('click', ()=>setTab('chats'));
     $('btnReload').addEventListener('click', loadBookings30d);
     $('btnClearFilter').addEventListener('click', ()=>{ filterUserId=null; renderBookings(); toast('ล้างตัวกรองผู้ใช้แล้ว'); });
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
+    $('btnSend').addEventListener('click', sendChat);
 
+    // เปลี่ยนสถานะ booking (delegation)
     document.body.addEventListener('change', async (e)=>{
       const el = e.target;
       if (el && el.classList.contains('statusSel')) {
@@ -230,18 +258,18 @@
     $('appSection').classList.add('hidden');
     $('loginSection').classList.remove('hidden');
     $('loginMsg').textContent = 'ออกจากระบบแล้ว';
-    closeChat();
+    stopChatRealtime();
   }
 
   function setTab(which){
-    if(which==='bookings'){
-      $('tabBookings').classList.add('active'); $('tabCustomers').classList.remove('active');
-      $('bookingsPanel').classList.remove('hidden'); $('customersPanel').classList.add('hidden');
-    }else{
-      $('tabCustomers').classList.add('active'); $('tabBookings').classList.remove('active');
-      $('customersPanel').classList.remove('hidden'); $('bookingsPanel').classList.add('hidden');
+    const tabs = ['bookings','customers','chats'];
+    for(const t of tabs){
+      $('tab'+capitalize(t)).classList.toggle('active', t===which);
+      $(t+'Panel').classList.toggle('hidden', t!==which);
     }
+    if (which==='chats') loadConversations();
   }
+  const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
 
   async function initApp(){
     const { data:{ user } } = await sb.auth.getUser();
@@ -321,7 +349,7 @@
         ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
       </select>
     `;
-    const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
+    const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatTabAndWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
     return `
       <div class="booking-card" data-bid="${b.id}">
         <div class="card-head">
@@ -402,7 +430,7 @@
           <td>
             <div class="row">
               <button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button>
-              <button class="btn btn-ghost" onclick="openChatWith('${p.id}','${(p.username||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>
+              <button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${(p.username||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>
             </div>
           </td>
         </tr>
@@ -422,19 +450,73 @@
     if (session) initApp();
   }
 
-  /* ======================= Admin Chat ======================= */
-
-  // state
+  /* ======================= Chats (Full Page) ======================= */
   let chatPeerId = null;
+  let chatPeerName = 'ผู้ใช้';
   let chatSubscription = null;
-
-  function computeChatId(a, b){
-    const ids = [a,b].sort();
-    return ids[0] + '_' + ids[1];
-  }
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+  function computeChatId(a, b){ const ids=[a,b].sort(); return ids[0]+'_'+ids[1]; }
+  function stopChatRealtime(){ if (chatSubscription){ chatSubscription.unsubscribe(); chatSubscription=null; } }
+
+  function openChatTabAndWith(uid, name){
+    setTab('chats');
+    openChatWith(uid, name);
+  }
+
+  // ดึง “รายชื่อห้อง” โดยอ่านข้อความของแอดมิน แล้ว group ตามคู่สนทนา (peer)
+  async function loadConversations(){
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
+
+    // ดึงช่วง 90 วันหลังสุด (พอให้เห็นห้องที่มีการคุย)
+    const since = new Date(); since.setDate(since.getDate()-90);
+
+    const { data: rows, error } = await sb
+      .from('messages')
+      .select('chat_id,sender_id,receiver_id,content,created_at')
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending:false });
+
+    if (error){ $('chatListItems').innerHTML = '<div class="muted" style="padding:12px">โหลดห้องไม่สำเร็จ</div>'; return; }
+
+    // group by peer_id -> keep latest message per peer
+    const byPeer = new Map();
+    for(const m of (rows||[])){
+      const peer = (m.sender_id===user.id) ? m.receiver_id : m.sender_id;
+      if (!byPeer.has(peer)) byPeer.set(peer, m); // เก็บตัวล่าสุดตามที่ order แล้ว
+    }
+
+    // ดึงชื่อผู้ใช้ทั้งหมดของ peers
+    const peers = [...byPeer.keys()];
+    let nameMap = new Map();
+    if (peers.length){
+      const { data: profs } = await sb.from('profiles').select('id,username').in('id', peers);
+      nameMap = new Map((profs||[]).map(p=>[p.id, p.username||'ผู้ใช้']));
+    }
+
+    // render list
+    const items = peers.map(pid=>{
+      const m = byPeer.get(pid);
+      const name = nameMap.get(pid) || 'ผู้ใช้';
+      const time = new Date(m.created_at).toLocaleString('th-TH',{ month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const snippet = (m.content||'').toString();
+      const selected = (pid===chatPeerId) ? ' selected' : '';
+      return `
+        <div class="cl-item${selected}" onclick="openChatWith('${pid}','${(name).replace(/'/g,'\\&#39;')}')">
+          <div>
+            <div class="cl-name">${escapeHtml(name)}</div>
+            <div class="cl-snippet">${escapeHtml(snippet)}</div>
+          </div>
+          <div class="cl-time">${time}</div>
+        </div>
+      `;
+    }).join('');
+
+    $('chatListItems').innerHTML = items || '<div class="muted" style="padding:12px">— ยังไม่มีการสนทนา —</div>';
   }
 
   async function openChatWith(peerId, peerName='ผู้ใช้'){
@@ -442,35 +524,34 @@
       const { data:{ user } } = await sb.auth.getUser();
       if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
 
-      chatPeerId = peerId;
+      chatPeerId = peerId; chatPeerName = peerName;
       $('chatTitle').textContent = `แชทกับ: ${peerName}`;
-      $('chatPanel').classList.remove('hidden');
-      $('chatMessages').innerHTML = 'กำลังโหลด...';
+      $('chatHeaderRight').textContent = '';
 
-      if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
+      // เลือกใน list ให้เห็นเป็น active
+      document.querySelectorAll('.cl-item').forEach(el=>el.classList.remove('selected'));
+      const idx = [...document.querySelectorAll('.cl-item')].find(el => el.getAttribute('onclick')?.includes(peerId));
+      if (idx) idx.classList.add('selected');
 
+      stopChatRealtime();
       const chatId = computeChatId(user.id, peerId);
 
-      // load history
+      // โหลดข้อความย้อนหลัง
       const { data: rows, error } = await sb
         .from('messages')
         .select('*')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true });
 
-      if (error) { $('chatMessages').innerHTML = 'โหลดข้อความไม่สำเร็จ'; return; }
+      if (error) { $('chatMessages').innerHTML = '<div class="muted" style="padding:12px">โหลดข้อความไม่สำเร็จ</div>'; return; }
       renderChatRows(rows || [], user.id);
 
-      // realtime
+      // subscribe realtime
       chatSubscription = sb
         .channel('realtime:messages:'+chatId)
         .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-          payload => {
-            if (payload.eventType === 'INSERT') {
-              appendChatRow(payload.new, user.id);
-            }
-          }
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+          payload => appendChatRow(payload.new, user.id)
         ).subscribe();
 
     }catch(e){
@@ -479,15 +560,9 @@
     }
   }
 
-  function closeChat(){
-    $('chatPanel').classList.add('hidden');
-    if (chatSubscription){ chatSubscription.unsubscribe(); chatSubscription = null; }
-    chatPeerId = null;
-  }
-
   function renderChatRows(rows, myId){
     const box = $('chatMessages');
-    if(!rows.length){ box.innerHTML = '<div class="muted">— ยังไม่มีข้อความ —</div>'; return; }
+    if(!rows.length){ box.innerHTML = '<div class="muted" style="padding:12px">— ยังไม่มีข้อความ —</div>'; return; }
     box.innerHTML = rows.map(m=>{
       const mine = m.sender_id === myId;
       return `
@@ -513,6 +588,9 @@
       </div>`;
     box.insertAdjacentHTML('beforeend', html);
     box.scrollTop = box.scrollHeight;
+
+    // อัปเดตรายการแชทซ้ายให้ขึ้นบน (โหลดใหม่สั้น ๆ)
+    loadConversations();
   }
 
   async function sendChat(){
@@ -524,8 +602,8 @@
 
     $('chatInput').value = '';
     const { error } = await sb.from('messages').insert({
-      chat_id: chatId,            // มี trigger ช่วย validate ให้ถูกต้อง
-      sender_id: user.id,         // ต้องเป็นผู้ส่ง = ตัวเอง (RLS)
+      chat_id: chatId,
+      sender_id: user.id,
       receiver_id: chatPeerId,
       content: txt
     });

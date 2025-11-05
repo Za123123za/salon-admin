@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>รีเซ็ตรหัสผ่าน</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f8fa;margin:0}
+    .wrap{max-width:480px;margin:40px auto;padding:16px}
+    .card{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:20px}
+    h2{margin:0 0 10px 0}
+    .muted{color:#6b7280}
+    input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #e5e7eb;margin:8px 0}
+    button{background:#00acc1;color:#fff;border:0;font-weight:700;cursor:pointer}
+    #msg{margin-top:8px;font-size:14px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>ตั้งรหัสผ่านใหม่</h2>
+      <p class="muted">กรอกรหัสผ่านใหม่ 2 ครั้ง แล้วกดยืนยัน</p>
+      <input id="pass1" type="password" placeholder="รหัสผ่านใหม่" />
+      <input id="pass2" type="password" placeholder="ยืนยันรหัสผ่านใหม่" />
+      <button id="btn">ยืนยันการเปลี่ยนรหัสผ่าน</button>
+      <div id="msg" class="muted"></div>
+    </div>
+  </div>
+
+<script>
+  // ✅ ใส่ค่าจริงจากโปรเจกต์ Supabase ของคุณ
+  const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $  = (id)=>document.getElementById(id);
+  const msg = (t, ok=true)=>{ const el=$('msg'); el.textContent=t; el.style.color=ok?'#6b7280':'#b91c1c'; };
+
+  // 1) แลกโค้ดใน URL เป็นเซสชันก่อน (จำเป็นสำหรับลิงก์รีเซ็ต/มายากลใน v2)
+  (async () => {
+    try {
+      // ลิงก์จากอีเมลของ Supabase จะมี fragment: #access_token=...&type=recovery&...
+      const { error } = await sb.auth.exchangeCodeForSession(window.location.hash);
+      if (error) {
+        // ถ้าโค้ดหมดอายุ/ถูกใช้ไปแล้ว จะแจ้งเตือนให้ชัดเจน
+        msg('ลิงก์หมดอายุหรือไม่ถูกต้อง โปรดลอง “ลืมรหัสผ่าน” อีกครั้ง', false);
+      }
+    } catch (e) {
+      msg('ไม่สามารถตั้งค่าเซสชันจากลิงก์ได้: ' + (e.message || e), false);
+    }
+  })();
+
+  // 2) ฟังอีเวนต์ — ถ้าเป็นโหมดกู้รหัสผ่าน จะแจ้งผู้ใช้
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      msg('โปรดตั้งรหัสผ่านใหม่');
+    }
+  });
+
+  // 3) กดปุ่มเพื่ออัปเดตรหัสผ่าน
+  $('btn').addEventListener('click', async () => {
+    const p1 = $('pass1').value.trim();
+    const p2 = $('pass2').value.trim();
+    if (!p1 || !p2) return msg('กรุณากรอกรหัสผ่านให้ครบ', false);
+    if (p1.length < 6) return msg('รหัสผ่านควรยาวอย่างน้อย 6 ตัวอักษร', false);
+    if (p1 !== p2) return msg('รหัสผ่านทั้งสองช่องไม่ตรงกัน', false);
+
+    try {
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) throw error;
+      msg('เปลี่ยนรหัสผ่านสำเร็จ! กลับไปที่แอปแล้วเข้าสู่ระบบใหม่ได้เลย ✅');
+    } catch (e) {
+      msg('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + (e.message || e), false);
+    }
+  });
+</script>
+</body>
+</html>

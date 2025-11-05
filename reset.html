@@ -43,16 +43,15 @@
   async function bootstrapSession() {
     try {
       const url  = new URL(window.location.href);
-      const code = url.searchParams.get('code');          // ?code=...
-      const type = url.searchParams.get('type');          // ?type=recovery ...
+      const code = url.searchParams.get('code'); // ?code=...
       const hash = new URLSearchParams(window.location.hash.slice(1)); // #access_token=...
 
-      if (code && type === 'recovery') {
-        // ✅ เส้นทางที่ถูกต้องสำหรับลิงก์รีเซ็ตรหัสผ่านแบบ PKCE (ไม่มี code_verifier ในโดเมนนี้)
+      if (code) {
+        // ✅ รองรับเคสที่มีแค่ ?code=... (ไม่มี type=recovery ก็ถือว่าเป็น recovery)
         const { error } = await sb.auth.verifyOtp({ type: 'recovery', token_hash: code });
         if (error) throw error;
       } else if (hash.get('access_token') && hash.get('refresh_token')) {
-        // ✅ รองรับลิงก์รูปแบบเก่า (implicit)
+        // ✅ ลิงก์รูปแบบเก่า
         const { error } = await sb.auth.setSession({
           access_token:  hash.get('access_token'),
           refresh_token: hash.get('refresh_token'),
@@ -63,7 +62,6 @@
         return;
       }
 
-      // เช็คว่ามี session แล้วจริง
       const { data } = await sb.auth.getSession();
       if (!data?.session) {
         msg('ยังไม่มีเซสชันจากลิงก์ กรุณาลองใหม่', false);
@@ -80,7 +78,6 @@
 
   bootstrapSession();
 
-  // เปลี่ยนรหัสผ่าน
   btn.addEventListener('click', async () => {
     const p1 = $('pass1').value.trim();
     const p2 = $('pass2').value.trim();

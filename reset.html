@@ -14,6 +14,7 @@
     button{background:#00acc1;color:#fff;border:0;font-weight:700;cursor:pointer}
     #msg{margin-top:8px;font-size:14px}
   </style>
+  <!-- ใส่แค่ครั้งเดียวพอ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -28,50 +29,56 @@
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // 👉 ใช้ค่าจริงของคุณ
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const $  = (id)=>document.getElementById(id);
+  const sb  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $   = (id)=>document.getElementById(id);
   const msg = (t, ok=true)=>{ const el=$('msg'); el.textContent=t; el.style.color=ok?'#6b7280':'#b91c1c'; };
-
   const btn = $('btn');
-  btn.disabled = true;                // ❗ปิดไว้ก่อน จนกว่าจะมี session
 
-  (async () => {
+  btn.disabled = true; // ปิดไว้ก่อนจนกว่าจะมีเซสชัน
+
+  async function bootstrapSession() {
     try {
-      // บางลิงก์มาแบบ #access_token=..., บางลิงก์มาแบบ ?code=...
-      const urlFragmentOrQuery = window.location.hash || window.location.search;
+      const qs   = window.location.search;       // ?code=...
+      const hash = window.location.hash;         // #access_token=...
 
-      // ลองแลกโค้ดเป็น session
-      const { data, error } = await sb.auth.exchangeCodeForSession(urlFragmentOrQuery);
-      if (error) {
-        console.error('exchange error:', error);
+      if (qs.includes('code=')) {
+        // กรณีลิงก์แบบใหม่: ใช้ ?code=
+        const code = new URLSearchParams(qs).get('code');
+        const { error } = await sb.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+      } else if (hash.includes('access_token=')) {
+        // กรณีลิงก์แบบเก่า: มี access_token + refresh_token ใน hash
+        const h = new URLSearchParams(hash.slice(1));
+        const access_token  = h.get('access_token');
+        const refresh_token = h.get('refresh_token');
+        const { error } = await sb.auth.setSession({ access_token, refresh_token });
+        if (error) throw error;
+      }
+
+      // ยืนยันว่ามี session แล้ว
+      const { data } = await sb.auth.getSession();
+      if (!data?.session) {
         msg('ลิงก์หมดอายุ/ไม่ถูกต้อง กรุณากด “ลืมรหัสผ่าน” ใหม่อีกครั้ง', false);
         return;
       }
 
-      // ตรวจว่ามี session จริง
-      const { data: sessData } = await sb.auth.getSession();
-      if (!sessData?.session) {
-        msg('ยังไม่มีเซสชันจากลิงก์ กรุณาลองใหม่', false);
-        return;
-      }
-
-      // พร้อมให้เปลี่ยนรหัสผ่าน
       btn.disabled = false;
       msg('โปรดตั้งรหัสผ่านใหม่');
     } catch (e) {
-      console.error(e);
+      console.error('bootstrap error:', e);
       msg('ไม่สามารถตั้งค่าเซสชันจากลิงก์ได้: ' + (e.message || e), false);
     }
-  })();
+  }
 
-  // เมื่อกดเปลี่ยนรหัส
-  $('btn').addEventListener('click', async () => {
+  bootstrapSession();
+
+  // เปลี่ยนรหัสผ่าน
+  btn.addEventListener('click', async () => {
     const p1 = $('pass1').value.trim();
     const p2 = $('pass2').value.trim();
     if (!p1 || !p2) return msg('กรุณากรอกรหัสผ่านให้ครบ', false);
@@ -80,18 +87,13 @@
 
     try {
       const { error } = await sb.auth.updateUser({ password: p1 });
-      if (error) {
-        console.error('updateUser error:', error);
-        msg('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + error.message, false);
-        return;
-      }
+      if (error) throw error;
       msg('เปลี่ยนรหัสผ่านสำเร็จ! กลับไปที่แอปแล้วเข้าสู่ระบบใหม่ได้เลย ✅');
     } catch (e) {
-      console.error(e);
+      console.error('updateUser error:', e);
       msg('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + (e.message || e), false);
     }
   });
 </script>
-
 </body>
 </html>

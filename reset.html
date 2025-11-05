@@ -14,7 +14,6 @@
     button{background:#00acc1;color:#fff;border:0;font-weight:700;cursor:pointer}
     #msg{margin-top:8px;font-size:14px}
   </style>
-  <!-- ใส่แค่ครั้งเดียวพอ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -30,7 +29,7 @@
   </div>
 
 <script>
-  // 👉 ใช้ค่าจริงของคุณ
+  // 🔧 ใส่ค่าจริงของโปรเจ็กต์คุณ
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
@@ -39,31 +38,35 @@
   const msg = (t, ok=true)=>{ const el=$('msg'); el.textContent=t; el.style.color=ok?'#6b7280':'#b91c1c'; };
   const btn = $('btn');
 
-  btn.disabled = true; // ปิดไว้ก่อนจนกว่าจะมีเซสชัน
+  btn.disabled = true;
 
   async function bootstrapSession() {
     try {
-      const qs   = window.location.search;       // ?code=...
-      const hash = window.location.hash;         // #access_token=...
+      const url  = new URL(window.location.href);
+      const code = url.searchParams.get('code');          // ?code=...
+      const type = url.searchParams.get('type');          // ?type=recovery ...
+      const hash = new URLSearchParams(window.location.hash.slice(1)); // #access_token=...
 
-      if (qs.includes('code=')) {
-        // กรณีลิงก์แบบใหม่: ใช้ ?code=
-        const code = new URLSearchParams(qs).get('code');
-        const { error } = await sb.auth.exchangeCodeForSession(code);
+      if (code && type === 'recovery') {
+        // ✅ เส้นทางที่ถูกต้องสำหรับลิงก์รีเซ็ตรหัสผ่านแบบ PKCE (ไม่มี code_verifier ในโดเมนนี้)
+        const { error } = await sb.auth.verifyOtp({ type: 'recovery', token_hash: code });
         if (error) throw error;
-      } else if (hash.includes('access_token=')) {
-        // กรณีลิงก์แบบเก่า: มี access_token + refresh_token ใน hash
-        const h = new URLSearchParams(hash.slice(1));
-        const access_token  = h.get('access_token');
-        const refresh_token = h.get('refresh_token');
-        const { error } = await sb.auth.setSession({ access_token, refresh_token });
+      } else if (hash.get('access_token') && hash.get('refresh_token')) {
+        // ✅ รองรับลิงก์รูปแบบเก่า (implicit)
+        const { error } = await sb.auth.setSession({
+          access_token:  hash.get('access_token'),
+          refresh_token: hash.get('refresh_token'),
+        });
         if (error) throw error;
+      } else {
+        msg('ลิงก์ไม่ถูกต้องหรือหมดอายุ กรุณากด “ลืมรหัสผ่าน” ใหม่จากแอป', false);
+        return;
       }
 
-      // ยืนยันว่ามี session แล้ว
+      // เช็คว่ามี session แล้วจริง
       const { data } = await sb.auth.getSession();
       if (!data?.session) {
-        msg('ลิงก์หมดอายุ/ไม่ถูกต้อง กรุณากด “ลืมรหัสผ่าน” ใหม่อีกครั้ง', false);
+        msg('ยังไม่มีเซสชันจากลิงก์ กรุณาลองใหม่', false);
         return;
       }
 

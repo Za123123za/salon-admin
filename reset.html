@@ -13,44 +13,72 @@
     input,button{width:100%;padding:12px;border-radius:10px;border:1px solid #e5e7eb;margin:8px 0}
     button{background:#00acc1;color:#fff;border:0;font-weight:700;cursor:pointer}
     #msg{margin-top:8px;font-size:14px}
+    .hidden{display:none}
+    .disabled{opacity:.6;pointer-events:none}
   </style>
+  <!-- ✅ โหลด supabase เพียงครั้งเดียว -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h2>ตั้งรหัสผ่านใหม่</h2>
-      <p class="muted">กรอกรหัสผ่านใหม่ 2 ครั้ง แล้วกดยืนยัน</p>
-      <input id="pass1" type="password" placeholder="รหัสผ่านใหม่" />
-      <input id="pass2" type="password" placeholder="ยืนยันรหัสผ่านใหม่" />
-      <button id="btn">ยืนยันการเปลี่ยนรหัสผ่าน</button>
+
+      <!-- STEP 0: ให้ผู้ใช้กดเริ่มก่อน (กันบอทสแกนอีเมลเผลอ verify เอง) -->
+      <div id="step0">
+        <p class="muted">กดปุ่มด้านล่างเพื่อเริ่มยืนยันลิงก์จากอีเมล</p>
+        <button id="start">เริ่มตั้งรหัสผ่าน</button>
+      </div>
+
+      <!-- STEP 1: ฟอร์มตั้งรหัส (ถูกซ่อนไว้ก่อนจนกว่าจะ verify สำเร็จ) -->
+      <div id="step1" class="hidden">
+        <p class="muted">กรอกรหัสผ่านใหม่ 2 ครั้ง แล้วกดยืนยัน</p>
+        <input id="pass1" type="password" placeholder="รหัสผ่านใหม่" />
+        <input id="pass2" type="password" placeholder="ยืนยันรหัสผ่านใหม่" />
+        <button id="btn" class="disabled" disabled>ยืนยันการเปลี่ยนรหัสผ่าน</button>
+      </div>
+
       <div id="msg" class="muted"></div>
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  // 🔧 ใส่ค่าจริงของโปรเจกต์คุณ
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+
   const sb  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const $   = (id)=>document.getElementById(id);
   const msg = (t, ok=true)=>{ const el=$('msg'); el.textContent=t; el.style.color=ok?'#6b7280':'#b91c1c'; };
-  const btn = $('btn');
 
-  btn.disabled = true;
+  const startBtn = $('start');
+  const step0 = $('step0');
+  const step1 = $('step1');
+  const submitBtn = $('btn');
+
+  // เปิดใช้งานปุ่ม submit เมื่อกรอกรหัสครบและตรงกัน
+  function validateInputs() {
+    const p1 = $('pass1').value.trim();
+    const p2 = $('pass2').value.trim();
+    const ok = p1.length >= 6 && p1 === p2;
+    submitBtn.disabled = !ok;
+    submitBtn.classList.toggle('disabled', !ok);
+  }
+  $('pass1').addEventListener('input', validateInputs);
+  $('pass2').addEventListener('input', validateInputs);
 
   async function verifyFromUrlOnce() {
     try {
       const url  = new URL(window.location.href);
-      const code = url.searchParams.get('code');          // ?code=...
-      const hash = new URLSearchParams(location.hash.slice(1)); // #access_token=...
+      const code = url.searchParams.get('code');                           // ?code=...
+      const hash = new URLSearchParams(window.location.hash.slice(1));     // #access_token=...
 
       if (code) {
-        // 🔑 flow แบบ one-time code (ที่คุณกำลังใช้)
+        // ✅ เส้นทางลิงก์แบบ one-time code
         const { error } = await sb.auth.verifyOtp({ type: 'recovery', token_hash: code });
         if (error) throw error;
       } else if (hash.get('access_token') && hash.get('refresh_token')) {
-        // 🔑 เผื่ออีเมลบางแบบส่งเป็น fragment (implicit)
+        // ✅ สำรอง: รูปแบบ implicit (fragment)
         const { error } = await sb.auth.setSession({
           access_token:  hash.get('access_token'),
           refresh_token: hash.get('refresh_token'),
@@ -58,23 +86,36 @@
         if (error) throw error;
       } else {
         msg('ลิงก์ไม่ถูกต้อง/ไม่มีโค้ด กรุณากด “ลืมรหัสผ่าน” ใหม่จากแอป', false);
-        return;
+        return false;
       }
 
       const { data } = await sb.auth.getSession();
-      if (!data?.session) { msg('ยังไม่มีเซสชันจากลิงก์ กรุณาลองใหม่', false); return; }
+      if (!data?.session) { msg('ยังไม่มีเซสชันจากลิงก์ กรุณาลองใหม่', false); return false; }
 
-      btn.disabled = false;
-      msg('โปรดตั้งรหัสผ่านใหม่');
+      return true;
     } catch (e) {
       console.error('verify error:', e);
-      msg('Email link is invalid or has expired', false);
+      msg((e?.message) ? e.message : 'Email link is invalid or has expired', false);
+      return false;
     }
   }
 
-  verifyFromUrlOnce();
+  // ให้ผู้ใช้กดเริ่มก่อนค่อย verify (กันบอท)
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    msg('กำลังตรวจสอบลิงก์...', true);
+    const ok = await verifyFromUrlOnce();
+    if (ok) {
+      step0.classList.add('hidden');
+      step1.classList.remove('hidden');
+      msg('โปรดตั้งรหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)');
+    } else {
+      startBtn.disabled = false;
+    }
+  });
 
-  btn.addEventListener('click', async () => {
+  // เปลี่ยนรหัสผ่าน
+  submitBtn.addEventListener('click', async () => {
     const p1 = $('pass1').value.trim();
     const p2 = $('pass2').value.trim();
     if (!p1 || !p2) return msg('กรุณากรอกรหัสผ่านให้ครบ', false);
@@ -82,16 +123,18 @@
     if (p1 !== p2) return msg('รหัสผ่านทั้งสองช่องไม่ตรงกัน', false);
 
     try {
+      submitBtn.disabled = true;
+      submitBtn.classList.add('disabled');
+      msg('กำลังเปลี่ยนรหัสผ่าน...');
       const { error } = await sb.auth.updateUser({ password: p1 });
       if (error) throw error;
       msg('เปลี่ยนรหัสผ่านสำเร็จ! กลับไปที่แอปแล้วเข้าสู่ระบบใหม่ได้เลย ✅');
     } catch (e) {
       console.error('updateUser error:', e);
       msg('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + (e.message || e), false);
+      validateInputs(); // เปิดปุ่มอีกครั้งถ้าเงื่อนไขผ่าน
     }
   });
 </script>
-
-
 </body>
 </html>

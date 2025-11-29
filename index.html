@@ -246,7 +246,7 @@
     hideSys();
     const email = $('email').value.trim();
     const pass  = $('password').value;
-    if (!email || !pass) { $('loginMsg').textContent = 'กรอกอีเมล/รหัสผ่านก่อน'; return; }
+       if (!email || !pass) { $('loginMsg').textContent = 'กรอกอีเมล/รหัสผ่านก่อน'; return; }
     $('loginMsg').textContent = 'กำลังเข้าสู่ระบบ...';
     const { error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) { $('loginMsg').textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + error.message; return; }
@@ -305,8 +305,9 @@
   async function loadBookings30d(){
     const { from, to } = getRange30d();
 
+    // ⭐ เพิ่ม slip_url ใน select ด้วย
     let q = sb.from('bookings')
-      .select('id,user_id,start_at,end_at,status,services(name),staff(display_name)')
+      .select('id,user_id,start_at,end_at,status,slip_url,services(name),staff(display_name)')
       .gte('start_at', from.toISOString())
       .lt('start_at', to.toISOString())
       .order('start_at', { ascending: true });
@@ -349,7 +350,14 @@
         ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
       </select>
     `;
+
     const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatTabAndWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
+
+    // ⭐ ส่วนแสดงหลักฐานการโอน
+    const slipPart = b.slip_url
+      ? `<button class="btn btn-ghost" type="button" onclick="window.open('${b.slip_url}','_blank')">ดูสลิป</button>`
+      : `<span class="muted" style="font-size:12px">ไม่มีหลักฐานโอน</span>`;
+
     return `
       <div class="booking-card" data-bid="${b.id}">
         <div class="card-head">
@@ -367,7 +375,10 @@
             <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
             ${sel}
           </div>
-          ${chatBtn}
+          <div class="row" style="gap:8px">
+            ${slipPart}
+            ${chatBtn}
+          </div>
         </div>
       </div>
     `;

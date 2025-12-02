@@ -70,6 +70,13 @@
     #chatMessages{flex:1 1 auto;overflow:auto;padding:10px;background:#f6f8fa}
     #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7}
     #chatComposer input{flex:1 1 auto}
+
+    /* ===== Gallery (รูปตัวอย่าง) ===== */
+    #galleryControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+    #galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+    .g-item{background:#fff;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:8px;display:flex;flex-direction:column;gap:6px}
+    .g-item img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:3/4}
+    .g-item button{align-self:flex-end}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -104,6 +111,8 @@
       <button id="tabBookings" class="active" type="button">คิวช่วง 30 วัน</button>
       <button id="tabCustomers" type="button">ผู้ใช้</button>
       <button id="tabChats" type="button">แชท</button>
+      <!-- ⭐ ใหม่: แท็บจัดการรูป -->
+      <button id="tabGallery" type="button">รูปตัวอย่าง</button>
     </div>
 
     <!-- BOOKINGS -->
@@ -182,6 +191,23 @@
         </div>
       </div>
     </section>
+
+    <!-- ⭐ GALLERY PANEL: จัดการรูปตัวอย่างทุกหน้า -->
+    <section id="galleryPanel" class="card hidden">
+      <h3 style="margin-top:0">รูปตัวอย่างบริการ</h3>
+      <p class="muted" style="margin-top:4px;margin-bottom:10px">
+        เลือกหมวด แล้วอัปโหลด/ลบรูปได้ รูปเหล่านี้จะไปแสดงในหน้า haircut, nail ฯลฯ
+      </p>
+
+      <div id="galleryControls">
+        <select id="galleryCategory"></select>
+        <input id="galleryFile" type="file" accept="image/*" multiple />
+        <button id="btnUploadGallery" class="btn" type="button">อัปโหลดรูป</button>
+        <span id="galleryStatus" class="muted"></span>
+      </div>
+
+      <div id="galleryGrid"></div>
+    </section>
   </div>
 </div>
 
@@ -191,6 +217,17 @@
   // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+
+  // ===== Gallery categories (ใช้ตรงนี้ให้ตรงกับ Flutter) =====
+  const GALLERY_CATEGORIES = [
+    { id: 'haircut_short', label: 'ตัดผมหญิง - ผมสั้น' },
+    { id: 'haircut_long',  label: 'ตัดผมหญิง - ผมยาว' },
+    { id: 'nail',          label: 'ทำเล็บ' },
+    { id: 'haircolor',     label: 'ทำสีผม' },
+    { id: 'makeup',        label: 'เมคอัพ' },
+    { id: 'spa',           label: 'สปา' },
+    { id: 'eyelash',       label: 'ต่อขนตา' },
+  ];
 
   // ====== Utils ======
   const $ = (id)=>document.getElementById(id);
@@ -211,9 +248,14 @@
   let sb = null;
   let filterUserId = null;
 
+  // ===== Gallery state =====
+  let galleryItems = [];
+  let galleryCategoryId = GALLERY_CATEGORIES[0].id;
+
   window.addEventListener('DOMContentLoaded', () => {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     bindEvents();
+    initGalleryUI();
     autoLoginIfSession();
   });
 
@@ -223,11 +265,20 @@
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
     $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
     $('tabChats').addEventListener('click', ()=>setTab('chats'));
+    $('tabGallery').addEventListener('click', ()=>setTab('gallery'));
+
     $('btnReload').addEventListener('click', loadBookings30d);
     $('btnClearFilter').addEventListener('click', ()=>{ filterUserId=null; renderBookings(); toast('ล้างตัวกรองผู้ใช้แล้ว'); });
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
     $('btnSend').addEventListener('click', sendChat);
+
+    // gallery
+    $('galleryCategory').addEventListener('change', e => {
+      galleryCategoryId = e.target.value;
+      loadGallery();
+    });
+    $('btnUploadGallery').addEventListener('click', uploadGalleryImages);
 
     // เปลี่ยนสถานะ booking (delegation)
     document.body.addEventListener('change', async (e)=>{
@@ -242,11 +293,22 @@
     });
   }
 
+  function setTab(which){
+    const tabs = ['bookings','customers','chats','gallery'];
+    for(const t of tabs){
+      $('tab'+capitalize(t)).classList.toggle('active', t===which);
+      $(t+'Panel').classList.toggle('hidden', t!==which);
+    }
+    if (which==='chats') loadConversations();
+    if (which==='gallery') loadGallery();
+  }
+  const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
+
   async function onLogin(){
     hideSys();
     const email = $('email').value.trim();
     const pass  = $('password').value;
-       if (!email || !pass) { $('loginMsg').textContent = 'กรอกอีเมล/รหัสผ่านก่อน'; return; }
+    if (!email || !pass) { $('loginMsg').textContent = 'กรอกอีเมล/รหัสผ่านก่อน'; return; }
     $('loginMsg').textContent = 'กำลังเข้าสู่ระบบ...';
     const { error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) { $('loginMsg').textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + error.message; return; }
@@ -260,16 +322,6 @@
     $('loginMsg').textContent = 'ออกจากระบบแล้ว';
     stopChatRealtime();
   }
-
-  function setTab(which){
-    const tabs = ['bookings','customers','chats'];
-    for(const t of tabs){
-      $('tab'+capitalize(t)).classList.toggle('active', t===which);
-      $(t+'Panel').classList.toggle('hidden', t!==which);
-    }
-    if (which==='chats') loadConversations();
-  }
-  const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
 
   async function initApp(){
     const { data:{ user } } = await sb.auth.getUser();
@@ -290,7 +342,12 @@
     $('appSection').classList.remove('hidden');
 
     setTab('bookings');
-    await Promise.all([loadBookings30d(), loadCustomers()]);
+    await Promise.all([loadBookings30d(), loadCustomers(), loadGallery()]);
+  }
+
+  async function autoLoginIfSession(){
+    const { data:{session} } = await sb.auth.getSession();
+    if (session) initApp();
   }
 
   function getRange30d(){
@@ -305,7 +362,6 @@
   async function loadBookings30d(){
     const { from, to } = getRange30d();
 
-    // ⭐ เพิ่ม slip_url ใน select ด้วย
     let q = sb.from('bookings')
       .select('id,user_id,start_at,end_at,status,slip_url,services(name),staff(display_name)')
       .gte('start_at', from.toISOString())
@@ -353,7 +409,6 @@
 
     const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatTabAndWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
 
-    // ⭐ ส่วนแสดงหลักฐานการโอน
     const slipPart = b.slip_url
       ? `<button class="btn btn-ghost" type="button" onclick="window.open('${b.slip_url}','_blank')">ดูสลิป</button>`
       : `<span class="muted" style="font-size:12px">ไม่มีหลักฐานโอน</span>`;
@@ -456,12 +511,104 @@
     toast('กรองการจองตามผู้ใช้แล้ว');
   };
 
-  async function autoLoginIfSession(){
-    const { data:{session} } = await sb.auth.getSession();
-    if (session) initApp();
+  /* ======================= Gallery functions ======================= */
+
+  function initGalleryUI(){
+    const sel = $('galleryCategory');
+    sel.innerHTML = GALLERY_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+    galleryCategoryId = sel.value;
   }
 
-  /* ======================= Chats (Full Page) ======================= */
+  async function loadGallery(){
+    $('galleryStatus').textContent = 'กำลังโหลด...';
+    const { data, error } = await sb
+      .from('gallery_images')
+      .select('id,category,public_url,storage_path,created_at')
+      .eq('category', galleryCategoryId)
+      .order('created_at', { ascending:false });
+
+    if (error) {
+      $('galleryStatus').textContent = 'โหลดรูปไม่สำเร็จ';
+      toast('โหลดรูปไม่สำเร็จ: '+error.message, false);
+      return;
+    }
+    galleryItems = data || [];
+    $('galleryStatus').textContent = `${galleryItems.length} รูปในหมวดนี้`;
+    renderGallery();
+  }
+
+  function renderGallery(){
+    const box = $('galleryGrid');
+    if (!galleryItems.length){
+      box.innerHTML = '<div class="muted">— ยังไม่มีรูปในหมวดนี้ —</div>';
+      return;
+    }
+    box.innerHTML = galleryItems.map(img=>{
+      const sp = img.storage_path || '';
+      return `
+        <div class="g-item">
+          <img src="${img.public_url}" alt="">
+          <button class="btn btn-ghost" type="button"
+            onclick="deleteGalleryImage('${img.id}','${sp}')">ลบ</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function uploadGalleryImages(){
+    const input = $('galleryFile');
+    const files = input.files;
+    if (!files || !files.length){
+      toast('เลือกไฟล์ก่อน', false); return;
+    }
+    const bucket = 'gallery';
+    $('galleryStatus').textContent = 'กำลังอัปโหลด...';
+
+    for (const file of files){
+      const path = `${galleryCategoryId}/${Date.now()}_${file.name}`;
+      const { error: upErr } = await sb.storage.from(bucket).upload(path, file);
+      if (upErr){
+        toast('อัปโหลดรูปไม่สำเร็จ: '+upErr.message, false);
+        continue;
+      }
+      const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      const { error: dbErr } = await sb.from('gallery_images').insert({
+        category: galleryCategoryId,
+        storage_path: path,
+        public_url: publicUrl,
+      });
+      if (dbErr){
+        toast('บันทึกข้อมูลรูปไม่สำเร็จ: '+dbErr.message, false);
+      }
+    }
+
+    input.value = '';
+    toast('อัปโหลดรูปเสร็จแล้ว');
+    await loadGallery();
+  }
+
+  window.deleteGalleryImage = async (id, storagePath)=>{
+    if (!confirm('ยืนยันลบรูปนี้?')) return;
+    const bucket = 'gallery';
+
+    const { error: sErr } = await sb.storage.from(bucket).remove([storagePath]);
+    if (sErr){
+      toast('ลบรูปจาก Storage ไม่สำเร็จ: '+sErr.message, false);
+      return;
+    }
+    const { error: dErr } = await sb.from('gallery_images').delete().eq('id', id);
+    if (dErr){
+      toast('ลบข้อมูลจากฐานข้อมูลไม่สำเร็จ: '+dErr.message, false);
+      return;
+    }
+    toast('ลบรูปเรียบร้อย');
+    await loadGallery();
+  };
+
+  /* ======================= Chats (เดิม) ======================= */
+
   let chatPeerId = null;
   let chatPeerName = 'ผู้ใช้';
   let chatSubscription = null;
@@ -477,12 +624,10 @@
     openChatWith(uid, name);
   }
 
-  // ดึง “รายชื่อห้อง” โดยอ่านข้อความของแอดมิน แล้ว group ตามคู่สนทนา (peer)
   async function loadConversations(){
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
 
-    // ดึงช่วง 90 วันหลังสุด (พอให้เห็นห้องที่มีการคุย)
     const since = new Date(); since.setDate(since.getDate()-90);
 
     const { data: rows, error } = await sb
@@ -494,14 +639,12 @@
 
     if (error){ $('chatListItems').innerHTML = '<div class="muted" style="padding:12px">โหลดห้องไม่สำเร็จ</div>'; return; }
 
-    // group by peer_id -> keep latest message per peer
     const byPeer = new Map();
     for(const m of (rows||[])){
       const peer = (m.sender_id===user.id) ? m.receiver_id : m.sender_id;
-      if (!byPeer.has(peer)) byPeer.set(peer, m); // เก็บตัวล่าสุดตามที่ order แล้ว
+      if (!byPeer.has(peer)) byPeer.set(peer, m);
     }
 
-    // ดึงชื่อผู้ใช้ทั้งหมดของ peers
     const peers = [...byPeer.keys()];
     let nameMap = new Map();
     if (peers.length){
@@ -509,7 +652,6 @@
       nameMap = new Map((profs||[]).map(p=>[p.id, p.username||'ผู้ใช้']));
     }
 
-    // render list
     const items = peers.map(pid=>{
       const m = byPeer.get(pid);
       const name = nameMap.get(pid) || 'ผู้ใช้';
@@ -539,7 +681,6 @@
       $('chatTitle').textContent = `แชทกับ: ${peerName}`;
       $('chatHeaderRight').textContent = '';
 
-      // เลือกใน list ให้เห็นเป็น active
       document.querySelectorAll('.cl-item').forEach(el=>el.classList.remove('selected'));
       const idx = [...document.querySelectorAll('.cl-item')].find(el => el.getAttribute('onclick')?.includes(peerId));
       if (idx) idx.classList.add('selected');
@@ -547,7 +688,6 @@
       stopChatRealtime();
       const chatId = computeChatId(user.id, peerId);
 
-      // โหลดข้อความย้อนหลัง
       const { data: rows, error } = await sb
         .from('messages')
         .select('*')
@@ -557,7 +697,6 @@
       if (error) { $('chatMessages').innerHTML = '<div class="muted" style="padding:12px">โหลดข้อความไม่สำเร็จ</div>'; return; }
       renderChatRows(rows || [], user.id);
 
-      // subscribe realtime
       chatSubscription = sb
         .channel('realtime:messages:'+chatId)
         .on('postgres_changes',
@@ -599,8 +738,6 @@
       </div>`;
     box.insertAdjacentHTML('beforeend', html);
     box.scrollTop = box.scrollHeight;
-
-    // อัปเดตรายการแชทซ้ายให้ขึ้นบน (โหลดใหม่สั้น ๆ)
     loadConversations();
   }
 

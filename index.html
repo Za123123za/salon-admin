@@ -192,7 +192,7 @@
       </div>
     </section>
 
-    <!-- ⭐ GALLERY PANEL: จัดการรูปตัวอย่างทุกหน้า -->
+    <!-- ⭐ GALLERY PANEL -->
     <section id="galleryPanel" class="card hidden">
       <h3 style="margin-top:0">รูปตัวอย่างบริการ</h3>
       <p class="muted" style="margin-top:4px;margin-bottom:10px">
@@ -220,13 +220,18 @@
 
   // ===== Gallery categories (ใช้ตรงนี้ให้ตรงกับ Flutter) =====
   const GALLERY_CATEGORIES = [
-    { id: 'haircut_short', label: 'ตัดผมหญิง - ผมสั้น' },
-    { id: 'haircut_long',  label: 'ตัดผมหญิง - ผมยาว' },
-    { id: 'nail',          label: 'ทำเล็บ' },
-    { id: 'haircolor',     label: 'ทำสีผม' },
-    { id: 'makeup',        label: 'เมคอัพ' },
-    { id: 'spa',           label: 'สปา' },
-    { id: 'eyelash',       label: 'ต่อขนตา' },
+    { id: 'haircut_short',     label: 'ตัดผมหญิง - ผมสั้น' },
+    { id: 'haircut_long',      label: 'ตัดผมหญิง - ผมยาว' },
+
+    // ✅ เพิ่มหมวดหมู่ตัดผมชาย
+    { id: 'haircutmen_short',  label: 'ตัดผมชาย - ผมสั้น' },
+    { id: 'haircutmen_long',   label: 'ตัดผมชาย - ผมยาว' },
+
+    { id: 'nail',              label: 'ทำเล็บ' },
+    { id: 'haircolor',         label: 'ทำสีผม' },
+    { id: 'makeup',            label: 'เมคอัพ' },
+    { id: 'spa',               label: 'สปา' },
+    { id: 'eyelash',           label: 'ต่อขนตา' },
   ];
 
   // ====== Utils ======

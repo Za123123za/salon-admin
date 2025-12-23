@@ -628,54 +628,64 @@
   }
 
   // ✅ จุดสำคัญ: ลบแล้วต้อง “โหลดใหม่” ไม่งั้นการ์ดจะค้างในหน้า
-  async function deleteReview(reviewId){
-    if (!confirm('ยืนยันลบรีวิวนี้?')) return;
+ async function deleteReview(reviewId){
+  if (!confirm('ยืนยันลบรีวิวนี้?')) return;
 
-    try{
-      // 1) ดึงรูปของรีวิวนี้
-      const { data: imgs, error: imgSelErr } = await sb
-        .from('review_images')
-        .select('id,storage_path')
-        .eq('review_id', reviewId);
+  try{
+    // 1) ดึงรูปของรีวิวนี้
+    const { data: imgs, error: imgSelErr } = await sb
+      .from('review_images')
+      .select('id,storage_path')
+      .eq('review_id', reviewId);
 
-      if (imgSelErr) throw imgSelErr;
+    if (imgSelErr) throw imgSelErr;
 
-      // 2) ลบไฟล์จาก storage (ถ้ามี)
-      if (imgs && imgs.length){
-        const paths = imgs.map(x=>x.storage_path).filter(Boolean);
-        if (paths.length){
-          const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
-          // ไม่บล็อคถ้าลบไฟล์ไม่ผ่าน (กันพังเพราะไฟล์หายไปก่อน)
-          if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
-        }
-
-        // 3) ลบ rows ใน review_images
-        const { error: imgDelErr } = await sb
-          .from('review_images')
-          .delete()
-          .eq('review_id', reviewId);
-
-        if (imgDelErr) throw imgDelErr;
+    // 2) ลบไฟล์จาก storage (ถ้ามี)
+    if (imgs && imgs.length){
+      const paths = imgs.map(x=>x.storage_path).filter(Boolean);
+      if (paths.length){
+        const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
+        if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
       }
 
-      // 4) ลบ review หลัก
-      const { error: revDelErr } = await sb
-        .from('reviews')
+      // 3) ลบ rows ใน review_images (เช็กว่าลบโดนจริง)
+      const { data: imgDeleted, error: imgDelErr } = await sb
+        .from('review_images')
         .delete()
-        .eq('id', reviewId);
+        .eq('review_id', reviewId)
+        .select('id'); // ✅ สำคัญ
 
-      if (revDelErr) throw revDelErr;
-
-      toast('ลบรีวิวเรียบร้อย');
-
-      // ✅ สำคัญที่สุด: โหลดใหม่
-      await loadReviews();
-
-    }catch(e){
-      toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
-      console.error(e);
+      if (imgDelErr) throw imgDelErr;
+      // ถ้า RLS บล็อก บางทีจะได้ [] โดยไม่ error
+      if (Array.isArray(imgDeleted) && imgDeleted.length === 0 && imgs.length > 0) {
+        toast('ลบรูปไม่สำเร็จ (สิทธิ์ไม่พอ/RLS บล็อก)', false);
+        return;
+      }
     }
+
+    // 4) ลบ review หลัก (เช็กว่าลบโดนจริง)
+    const { data: revDeleted, error: revDelErr } = await sb
+      .from('reviews')
+      .delete()
+      .eq('id', reviewId)
+      .select('id'); // ✅ สำคัญ
+
+    if (revDelErr) throw revDelErr;
+
+    if (!Array.isArray(revDeleted) || revDeleted.length === 0) {
+      toast('ลบไม่สำเร็จ: ไม่พบแถวที่จะลบ หรือ RLS ไม่อนุญาต', false);
+      return;
+    }
+
+    toast('ลบรีวิวเรียบร้อย ✅');
+    await loadReviews();
+
+  }catch(e){
+    toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
+    console.error(e);
   }
+}
+
 
   /* ======================= Gallery functions ======================= */
 
@@ -926,3 +936,4 @@
 </script>
 </body>
 </html>
+

@@ -47,7 +47,7 @@
     tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
     tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
 
-    .tabs{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+    .tabs{display:flex;gap:8px;margin-bottom:8px}
     .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
     .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
 
@@ -72,28 +72,24 @@
     #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7}
     #chatComposer input{flex:1 1 auto}
 
-    /* ===== Gallery ===== */
+    /* ===== Gallery (รูปตัวอย่าง) ===== */
     #galleryControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
     #galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
     .g-item{background:#fff;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:8px;display:flex;flex-direction:column;gap:6px}
     .g-item img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:3/4}
     .g-item button{align-self:flex-end}
 
-    /* ===== Reviews (NEW) ===== */
-    #reviewsTop{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
-    #reviewsGrid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-    @media (min-width:820px){ #reviewsGrid{grid-template-columns:1fr 1fr} }
-
-    .r-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}
-    .r-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-    .r-name{font-weight:800;font-size:16px}
-    .r-meta{font-size:12px;color:#9ca3af}
-    .stars{display:flex;gap:2px}
-    .star{color:#f59e0b}
-    .star.muted{color:#e5e7eb}
-    .r-comment{white-space:pre-wrap;word-break:break-word;color:#111}
-    .r-imgs{display:flex;gap:8px;flex-wrap:wrap}
-    .r-imgs img{width:96px;height:96px;object-fit:cover;border-radius:12px;background:#f3f4f6;border:1px solid #e5e7eb}
+    /* ===== Reviews ===== */
+    .review-grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:840px){ .review-grid{grid-template-columns:1fr 1fr} }
+    .review-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}
+    .review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .review-name{font-weight:800}
+    .review-meta{color:#9ca3af;font-size:12px}
+    .stars{color:#f59e0b;letter-spacing:1px}
+    .review-comment{white-space:pre-wrap;word-break:break-word}
+    .review-imgs{display:flex;gap:8px;flex-wrap:wrap}
+    .review-imgs img{width:84px;height:84px;border-radius:10px;object-fit:cover;background:#f3f4f6}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -129,7 +125,6 @@
       <button id="tabCustomers" type="button">ผู้ใช้</button>
       <button id="tabChats" type="button">แชท</button>
       <button id="tabGallery" type="button">รูปตัวอย่าง</button>
-      <!-- ⭐ NEW -->
       <button id="tabReviews" type="button">รีวิว</button>
     </div>
 
@@ -210,7 +205,7 @@
       </div>
     </section>
 
-    <!-- GALLERY -->
+    <!-- GALLERY PANEL -->
     <section id="galleryPanel" class="card hidden">
       <h3 style="margin-top:0">รูปตัวอย่างบริการ</h3>
       <p class="muted" style="margin-top:4px;margin-bottom:10px">
@@ -227,19 +222,20 @@
       <div id="galleryGrid"></div>
     </section>
 
-    <!-- ⭐ REVIEWS PANEL (NEW) -->
+    <!-- REVIEWS PANEL -->
     <section id="reviewsPanel" class="card hidden">
-      <div id="reviewsTop">
+      <div class="row" style="justify-content:space-between">
         <div>
           <h3 style="margin:0">รีวิวทั้งหมด</h3>
           <div class="muted" id="reviewsCount" style="margin-top:4px">0 รายการ</div>
         </div>
         <div class="row">
-          <input id="searchReview" placeholder="ค้นหา: ชื่อ/ข้อความ" />
+          <input id="searchReviews" placeholder="ค้นหา: ชื่อ/ข้อความ" />
           <button id="btnReloadReviews" class="btn btn-ghost" type="button">รีเฟรช</button>
         </div>
       </div>
-      <div id="reviewsGrid"></div>
+      <div style="height:12px"></div>
+      <div id="reviewsGrid" class="review-grid"></div>
     </section>
   </div>
 </div>
@@ -249,9 +245,9 @@
 <script>
   // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 
-  // ===== Gallery categories =====
+  // ===== Gallery categories (ใช้ตรงนี้ให้ตรงกับ Flutter) =====
   const GALLERY_CATEGORIES = [
     { id: 'haircut_short',     label: 'ตัดผมหญิง - ผมสั้น' },
     { id: 'haircut_long',      label: 'ตัดผมหญิง - ผมยาว' },
@@ -287,7 +283,7 @@
   let galleryItems = [];
   let galleryCategoryId = GALLERY_CATEGORIES[0].id;
 
-  // ===== Reviews state (NEW) =====
+  // ===== Reviews state =====
   let reviewsRaw = [];
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -300,12 +296,11 @@
   function bindEvents(){
     $('btnLogin').addEventListener('click', onLogin);
     $('btnSignOut').addEventListener('click', onSignOut);
-
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
     $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
     $('tabChats').addEventListener('click', ()=>setTab('chats'));
     $('tabGallery').addEventListener('click', ()=>setTab('gallery'));
-    $('tabReviews').addEventListener('click', ()=>setTab('reviews')); // NEW
+    $('tabReviews').addEventListener('click', ()=>setTab('reviews'));
 
     $('btnReload').addEventListener('click', loadBookings30d);
     $('btnClearFilter').addEventListener('click', ()=>{ filterUserId=null; renderBookings(); toast('ล้างตัวกรองผู้ใช้แล้ว'); });
@@ -320,9 +315,9 @@
     });
     $('btnUploadGallery').addEventListener('click', uploadGalleryImages);
 
-    // reviews (NEW)
+    // reviews
     $('btnReloadReviews').addEventListener('click', loadReviews);
-    $('searchReview').addEventListener('input', renderReviews);
+    $('searchReviews').addEventListener('input', renderReviews);
 
     // เปลี่ยนสถานะ booking (delegation)
     document.body.addEventListener('change', async (e)=>{
@@ -335,17 +330,26 @@
         el.disabled = false;
       }
     });
+
+    // delete review (delegation)
+    document.body.addEventListener('click', async (e)=>{
+      const el = e.target;
+      if (el && el.dataset && el.dataset.action === 'deleteReview') {
+        const rid = el.dataset.rid;
+        await deleteReview(rid);
+      }
+    });
   }
 
   function setTab(which){
-    const tabs = ['bookings','customers','chats','gallery','reviews']; // NEW
+    const tabs = ['bookings','customers','chats','gallery','reviews'];
     for(const t of tabs){
       $('tab'+capitalize(t)).classList.toggle('active', t===which);
       $(t+'Panel').classList.toggle('hidden', t!==which);
     }
     if (which==='chats') loadConversations();
     if (which==='gallery') loadGallery();
-    if (which==='reviews') loadReviews(); // NEW
+    if (which==='reviews') loadReviews();
   }
   const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
 
@@ -387,7 +391,7 @@
     $('appSection').classList.remove('hidden');
 
     setTab('bookings');
-    await Promise.all([loadBookings30d(), loadCustomers(), loadGallery(), loadReviews()]);
+    await Promise.all([loadBookings30d(), loadCustomers(), loadGallery()]);
   }
 
   async function autoLoginIfSession(){
@@ -556,6 +560,123 @@
     toast('กรองการจองตามผู้ใช้แล้ว');
   };
 
+  /* ======================= Reviews functions ======================= */
+
+  function stars(n){
+    const v = Math.max(0, Math.min(5, Number(n)||0));
+    return '★★★★★'.slice(0,v) + '☆☆☆☆☆'.slice(0,5-v);
+  }
+
+  const fmtReviewTime = iso => {
+    const d = new Date(iso);
+    return d.toLocaleString('th-TH', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  };
+
+  async function loadReviews(){
+    $('reviewsGrid').innerHTML = `<div class="muted">กำลังโหลด...</div>`;
+    const { data: rows, error } = await sb
+      .from('reviews')
+      .select('id,username,comment,rating,created_at,review_images(public_url,storage_path,id)')
+      .order('created_at', { ascending:false })
+      .limit(200);
+
+    if (error) {
+      $('reviewsGrid').innerHTML = `<div class="muted" style="color:#b91c1c">โหลดรีวิวไม่สำเร็จ: ${error.message}</div>`;
+      return;
+    }
+    reviewsRaw = rows || [];
+    $('reviewsCount').textContent = `${reviewsRaw.length} รายการ`;
+    renderReviews();
+  }
+
+  function renderReviews(){
+    const q = ($('searchReviews').value||'').toLowerCase().trim();
+    const filtered = (reviewsRaw||[]).filter(r=>{
+      const name = (r.username||'').toLowerCase();
+      const com  = (r.comment||'').toLowerCase();
+      return !q || name.includes(q) || com.includes(q);
+    });
+
+    $('reviewsCount').textContent = `${filtered.length} รายการ`;
+
+    if (!filtered.length) {
+      $('reviewsGrid').innerHTML = `<div class="muted">— ไม่มีรีวิว —</div>`;
+      return;
+    }
+
+    $('reviewsGrid').innerHTML = filtered.map(r=>{
+      const imgs = Array.isArray(r.review_images) ? r.review_images : [];
+      const imgHtml = imgs.slice(0,6).map(x=>`<img src="${x.public_url}" alt="">`).join('');
+      return `
+        <div class="review-card">
+          <div class="review-head">
+            <div>
+              <div class="review-name">${escapeHtml(r.username||'ผู้ใช้')}</div>
+              <div class="review-meta">${fmtReviewTime(r.created_at)} • id: ${escapeHtml(r.id)}</div>
+            </div>
+            <button class="btn btn-danger" data-action="deleteReview" data-rid="${escapeHtml(r.id)}" type="button">ลบ</button>
+          </div>
+
+          <div class="stars">${stars(r.rating)}</div>
+
+          <div class="review-comment">${escapeHtml(r.comment||'')}</div>
+
+          ${imgs.length ? `<div class="review-imgs">${imgHtml}</div>` : `<div class="muted" style="font-size:12px">ไม่มีรูปแนบ</div>`}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ✅ จุดสำคัญ: ลบแล้วต้อง “โหลดใหม่” ไม่งั้นการ์ดจะค้างในหน้า
+  async function deleteReview(reviewId){
+    if (!confirm('ยืนยันลบรีวิวนี้?')) return;
+
+    try{
+      // 1) ดึงรูปของรีวิวนี้
+      const { data: imgs, error: imgSelErr } = await sb
+        .from('review_images')
+        .select('id,storage_path')
+        .eq('review_id', reviewId);
+
+      if (imgSelErr) throw imgSelErr;
+
+      // 2) ลบไฟล์จาก storage (ถ้ามี)
+      if (imgs && imgs.length){
+        const paths = imgs.map(x=>x.storage_path).filter(Boolean);
+        if (paths.length){
+          const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
+          // ไม่บล็อคถ้าลบไฟล์ไม่ผ่าน (กันพังเพราะไฟล์หายไปก่อน)
+          if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
+        }
+
+        // 3) ลบ rows ใน review_images
+        const { error: imgDelErr } = await sb
+          .from('review_images')
+          .delete()
+          .eq('review_id', reviewId);
+
+        if (imgDelErr) throw imgDelErr;
+      }
+
+      // 4) ลบ review หลัก
+      const { error: revDelErr } = await sb
+        .from('reviews')
+        .delete()
+        .eq('id', reviewId);
+
+      if (revDelErr) throw revDelErr;
+
+      toast('ลบรีวิวเรียบร้อย');
+
+      // ✅ สำคัญที่สุด: โหลดใหม่
+      await loadReviews();
+
+    }catch(e){
+      toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
+      console.error(e);
+    }
+  }
+
   /* ======================= Gallery functions ======================= */
 
   function initGalleryUI(){
@@ -652,174 +773,15 @@
     await loadGallery();
   };
 
-  /* ======================= Reviews (NEW) ======================= */
-
-  function starRow(rating){
-    const n = Math.max(0, Math.min(5, Number(rating)||0));
-    return `
-      <div class="stars" title="${n}/5">
-        ${Array.from({length:5}).map((_,i)=>`<span class="star ${i<n?'':'muted'}">★</span>`).join('')}
-      </div>
-    `;
-  }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  }
-
-  async function loadReviews(){
-    try{
-      const grid = $('reviewsGrid');
-      grid.innerHTML = `<div class="muted">กำลังโหลด...</div>`;
-
-      // 1) ดึง reviews ล่าสุด
-      const { data: reviews, error: rErr } = await sb
-        .from('reviews')
-        .select('id, user_id, username, comment, rating, created_at')
-        .order('created_at', { ascending:false })
-        .limit(200);
-
-      if (rErr){ grid.innerHTML = `<div class="muted">โหลดรีวิวไม่สำเร็จ</div>`; toast(rErr.message,false); return; }
-
-      const rows = reviews || [];
-      $('reviewsCount').textContent = `${rows.length} รายการ`;
-      reviewsRaw = rows;
-
-      // 2) ดึงรูปทั้งหมดแบบทีเดียวจาก review_images (กันรีวิวซ้ำจาก join)
-      const ids = rows.map(x=>x.id);
-      let imgMap = new Map(); // review_id -> [{public_url, storage_path}]
-      if (ids.length){
-        const { data: imgs, error: iErr } = await sb
-          .from('review_images')
-          .select('id, review_id, public_url, storage_path')
-          .in('review_id', ids)
-          .order('id', { ascending:true });
-
-        if (!iErr){
-          for(const im of (imgs||[])){
-            const key = String(im.review_id);
-            if (!imgMap.has(key)) imgMap.set(key, []);
-            const arr = imgMap.get(key);
-            // กันซ้ำ
-            if (!arr.some(x => x.public_url === im.public_url)) {
-              arr.push({ public_url: im.public_url, storage_path: im.storage_path });
-            }
-          }
-        }
-      }
-
-      // 3) ผูก images เข้า reviewsRaw
-      reviewsRaw = rows.map(r => ({
-        ...r,
-        _images: imgMap.get(String(r.id)) || []
-      }));
-
-      renderReviews();
-    }catch(e){
-      $('reviewsGrid').innerHTML = `<div class="muted">โหลดรีวิวไม่สำเร็จ</div>`;
-      toast('โหลดรีวิวไม่สำเร็จ', false);
-      console.error(e);
-    }
-  }
-
-  function renderReviews(){
-    const q = ($('searchReview').value||'').toLowerCase().trim();
-    const list = (reviewsRaw||[]).filter(r=>{
-      const name = (r.username||'').toLowerCase();
-      const cmt  = (r.comment||'').toLowerCase();
-      return !q || name.includes(q) || cmt.includes(q);
-    });
-
-    $('reviewsCount').textContent = `${list.length} รายการ`;
-
-    const grid = $('reviewsGrid');
-    if (!list.length){
-      grid.innerHTML = `<div class="muted">— ยังไม่มีรีวิว —</div>`;
-      return;
-    }
-
-    grid.innerHTML = list.map(r=>{
-      const dt = new Date(r.created_at);
-      const dateStr = dt.toLocaleString('th-TH',{ year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-      const imgs = (r._images||[]).slice(0, 8).map(im => `<img src="${im.public_url}" alt="">`).join('');
-      return `
-        <div class="r-card">
-          <div class="r-head">
-            <div>
-              <div class="r-name">${escapeHtml(r.username || 'ผู้ใช้')}</div>
-              <div class="r-meta">${dateStr} • id: ${escapeHtml(r.id)}</div>
-            </div>
-            <button class="btn btn-danger" type="button" onclick="deleteReview('${r.id}')">ลบ</button>
-          </div>
-
-          ${starRow(r.rating)}
-
-          <div class="r-comment">${escapeHtml(r.comment || '')}</div>
-
-          <div class="r-imgs">
-            ${imgs || '<span class="muted" style="font-size:12px">ไม่มีรูปแนบ</span>'}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  window.deleteReview = async (reviewId)=>{
-    if (!confirm('ยืนยันลบรีวิวนี้?\n(จะลบทั้งรูปที่แนบและข้อมูลทั้งหมด)')) return;
-
-    try{
-      // 1) ดึงรูปทั้งหมดของรีวิวนี้ เพื่อเอา storage_path ไปลบไฟล์
-      const { data: imgs, error: iErr } = await sb
-        .from('review_images')
-        .select('id, storage_path')
-        .eq('review_id', reviewId);
-
-      if (iErr){
-        toast('โหลดรายการรูปไม่สำเร็จ: '+iErr.message, false);
-        return;
-      }
-
-      const paths = (imgs||[])
-        .map(x => x.storage_path)
-        .filter(Boolean);
-
-      // 2) ลบไฟล์ใน Storage bucket 'reviews'
-      if (paths.length){
-        const { error: sErr } = await sb.storage.from('reviews').remove(paths);
-        if (sErr){
-          toast('ลบรูปใน Storage ไม่สำเร็จ: '+sErr.message, false);
-          return;
-        }
-      }
-
-      // 3) ลบแถวใน review_images
-      const { error: dImgErr } = await sb.from('review_images').delete().eq('review_id', reviewId);
-      if (dImgErr){
-        toast('ลบข้อมูลรูปไม่สำเร็จ: '+dImgErr.message, false);
-        return;
-      }
-
-      // 4) ลบแถวใน reviews
-      const { error: dRevErr } = await sb.from('reviews').delete().eq('id', reviewId);
-      if (dRevErr){
-        toast('ลบรีวิวไม่สำเร็จ: '+dRevErr.message, false);
-        return;
-      }
-
-      toast('ลบรีวิวเรียบร้อย');
-      await loadReviews();
-    }catch(e){
-      console.error(e);
-      toast('ลบรีวิวไม่สำเร็จ', false);
-    }
-  };
-
   /* ======================= Chats (เดิม) ======================= */
 
   let chatPeerId = null;
   let chatPeerName = 'ผู้ใช้';
   let chatSubscription = null;
 
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
   function computeChatId(a, b){ const ids=[a,b].sort(); return ids[0]+'_'+ids[1]; }
   function stopChatRealtime(){ if (chatSubscription){ chatSubscription.unsubscribe(); chatSubscription=null; } }
 
@@ -884,6 +846,10 @@
       chatPeerId = peerId; chatPeerName = peerName;
       $('chatTitle').textContent = `แชทกับ: ${peerName}`;
       $('chatHeaderRight').textContent = '';
+
+      document.querySelectorAll('.cl-item').forEach(el=>el.classList.remove('selected'));
+      const idx = [...document.querySelectorAll('.cl-item')].find(el => el.getAttribute('onclick')?.includes(peerId));
+      if (idx) idx.classList.add('selected');
 
       stopChatRealtime();
       const chatId = computeChatId(user.id, peerId);

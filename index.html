@@ -56,7 +56,7 @@
     #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
     #toast.show{opacity:1}
 
-    /* ====== Chats (full page) ====== */
+    /* ====== Chats ====== */
     #chatsLayout{display:grid;grid-template-columns:280px 1fr;gap:14px;min-height:540px}
     #chatList{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:auto}
     .cl-head{padding:12px;border-bottom:1px solid #eef2f7;font-weight:700}
@@ -69,10 +69,18 @@
     #chatView{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);display:flex;flex-direction:column}
     #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
     #chatMessages{flex:1 1 auto;overflow:auto;padding:10px;background:#f6f8fa}
-    #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7}
+    #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7;align-items:center}
     #chatComposer input{flex:1 1 auto}
 
-    /* ===== Gallery (รูปตัวอย่าง) ===== */
+    /* bubble image */
+    .chat-img{
+      max-width:260px;
+      border-radius:12px;
+      display:block;
+      cursor:pointer;
+    }
+
+    /* ===== Gallery ===== */
     #galleryControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
     #galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
     .g-item{background:#fff;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:8px;display:flex;flex-direction:column;gap:6px}
@@ -91,7 +99,7 @@
     .review-imgs{display:flex;gap:8px;flex-wrap:wrap}
     .review-imgs img{width:84px;height:84px;border-radius:10px;object-fit:cover;background:#f3f4f6}
 
-    /* ===== Payments/Sales ===== */
+    /* ===== Payments ===== */
     .stat-grid{display:grid;grid-template-columns:1fr;gap:12px}
     @media (min-width:900px){ .stat-grid{grid-template-columns:1.1fr .9fr} }
     .stat-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px}
@@ -286,10 +294,14 @@
             <span id="chatHeaderRight" class="muted"></span>
           </div>
           <div id="chatMessages"></div>
+
           <div id="chatComposer">
             <input id="chatInput" placeholder="พิมพ์ข้อความ..." />
+            <input id="chatImage" type="file" accept="image/*" class="hidden" />
+            <button class="btn btn-ghost" type="button" id="btnPickImage">📷</button>
             <button class="btn" type="button" id="btnSend">ส่ง</button>
           </div>
+          <div id="chatImageHint" class="muted small" style="padding:0 12px 12px 12px; display:none;"></div>
         </div>
       </div>
     </section>
@@ -334,9 +346,8 @@
 <script>
   // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE'; // << ใส่ของจริงของคุณ (ผมตัดออกเพื่อความปลอดภัย)
 
-  // ===== Gallery categories (ใช้ตรงนี้ให้ตรงกับ Flutter) =====
   const GALLERY_CATEGORIES = [
     { id: 'haircut_short',     label: 'ตัดผมหญิง - ผมสั้น' },
     { id: 'haircut_long',      label: 'ตัดผมหญิง - ผมยาว' },
@@ -349,8 +360,6 @@
     { id: 'eyelash',           label: 'ต่อขนตา' },
   ];
 
-  // ====== ราคา (Fallback) — ใช้ชั่วคราวจนกว่าคุณจะใส่ services.price จริง ======
-  // คุณแก้ตัวเลขได้เลยตามร้านของคุณ
   const PRICE_FALLBACK = {
     'ตัดผมหญิง - ผมสั้น': 250,
     'ตัดผมหญิง - ผมยาว':  300,
@@ -362,11 +371,8 @@
     'สปา':                 600,
     'ต่อขนตา':             700,
   };
-
-  // มัดจำมาตรฐาน (Fallback) — ถ้า bookings.deposit_amount = 0 จะใช้ตัวนี้
   const DEFAULT_DEPOSIT = 100;
 
-  // ====== Utils ======
   const $ = (id)=>document.getElementById(id);
   const sysBox = $('sysMsg');
   const showSys = (msg)=>{ sysBox.textContent = msg; sysBox.classList.remove('hidden'); };
@@ -390,15 +396,14 @@
   let sb = null;
   let filterUserId = null;
 
-  // ===== Gallery state =====
   let galleryItems = [];
   let galleryCategoryId = GALLERY_CATEGORIES[0].id;
 
-  // ===== Reviews state =====
   let reviewsRaw = [];
-
-  // ===== Payments state =====
   let paymentsRaw = [];
+
+  // ===== Chats state (image) =====
+  let pendingChatImageFile = null;
 
   window.addEventListener('DOMContentLoaded', () => {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -422,7 +427,11 @@
     $('btnClearFilter').addEventListener('click', ()=>{ filterUserId=null; renderBookings(); toast('ล้างตัวกรองผู้ใช้แล้ว'); });
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
+
+    // chat buttons
     $('btnSend').addEventListener('click', sendChat);
+    $('btnPickImage').addEventListener('click', ()=>$('chatImage').click());
+    $('chatImage').addEventListener('change', onPickChatImage);
 
     // payments
     $('btnReloadPayments').addEventListener('click', loadPayments12m);
@@ -439,7 +448,7 @@
     $('btnReloadReviews').addEventListener('click', loadReviews);
     $('searchReviews').addEventListener('input', renderReviews);
 
-    // เปลี่ยนสถานะ booking (delegation)
+    // เปลี่ยนสถานะ booking
     document.body.addEventListener('change', async (e)=>{
       const el = e.target;
       if (el && el.classList.contains('statusSel')) {
@@ -451,7 +460,7 @@
       }
     });
 
-    // delete review (delegation)
+    // delete review
     document.body.addEventListener('click', async (e)=>{
       const el = e.target;
       if (el && el.dataset && el.dataset.action === 'deleteReview') {
@@ -532,7 +541,6 @@
   async function loadBookings30d(){
     const { from, to } = getRange30d();
 
-    // NOTE: เพิ่ม services(id,name,price) เพื่อเอาราคา
     let q = sb.from('bookings')
       .select('id,user_id,start_at,end_at,status,slip_url,deposit_amount,total_amount,services(id,name,price),staff(display_name)')
       .gte('start_at', from.toISOString())
@@ -569,13 +577,8 @@
     const svcName = b.services?.name || '—';
     const svcPriceDb = Number(b.services?.price || 0);
     const svcPriceFallback = Number(PRICE_FALLBACK[svcName] || 0);
-
-    // total_amount: ถ้ามีใน booking ใช้ก่อน, ไม่งั้นใช้ services.price, ไม่งั้นใช้ fallback map
     const total = Number(b.total_amount || 0) || svcPriceDb || svcPriceFallback || 0;
-
-    // deposit_amount: ถ้ามีใช้ก่อน ไม่งั้นใช้ DEFAULT_DEPOSIT (ถ้าราคา 0 จะเป็น 0)
     const deposit = Number(b.deposit_amount || 0) || (total>0 ? DEFAULT_DEPOSIT : 0);
-
     const net = Math.max(0, total - deposit);
     return { total, deposit, net, svcName };
   }
@@ -659,12 +662,10 @@
     $('countPaid').textContent      = `${listPaid.length} รายการ`;
   }
 
-  // ====== บันทึกชำระเงินลง payments เมื่อเปลี่ยน status เป็น paid ======
   async function ensurePaymentRecorded(bookingId){
     const { data:{ user } } = await sb.auth.getUser();
     if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
 
-    // 1) ดึง booking + service + user_id
     const { data: b, error: bErr } = await sb
       .from('bookings')
       .select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price)')
@@ -676,7 +677,6 @@
 
     const amt = calcAmountsForBooking(b);
 
-    // 2) upsert payments (booking_id unique)
     const payload = {
       booking_id: b.id,
       user_id: b.user_id,
@@ -692,15 +692,11 @@
       .from('payments')
       .upsert(payload, { onConflict: 'booking_id' });
 
-    if (upErr) {
-      // ถ้าตารางยังไม่ถูกสร้าง/ไม่มีสิทธิ์ จะ error ตรงนี้
-      throw upErr;
-    }
+    if (upErr) throw upErr;
   }
 
   async function onChangeStatus(bookingId, newStatus){
     try{
-      // ถ้าเปลี่ยนเป็น paid -> บันทึก payments ก่อน (เพื่อให้แน่ใจว่า “จำว่า paid” จริง)
       if (newStatus === 'paid'){
         await ensurePaymentRecorded(bookingId);
       }
@@ -712,17 +708,13 @@
       renderBookings();
       toast('อัปเดตสถานะเรียบร้อย');
 
-      // รีโหลด dashboard ยอดขายให้ทันที
-      if (newStatus === 'paid') {
-        await loadPayments12m();
-      }
+      if (newStatus === 'paid') await loadPayments12m();
     }catch(e){
       toast('เกิดข้อผิดพลาด: '+(e?.message||e), false);
       console.error(e);
     }
   }
 
-  // ===== Customers =====
   async function loadCustomers(){
     const { data: rows } = await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at', { ascending:false });
     customersRaw = rows || []; renderCustomers();
@@ -756,7 +748,6 @@
   };
 
   /* ======================= Payments/Sales ======================= */
-
   function pad2(n){ return String(n).padStart(2,'0'); }
   function monthKey(date){
     const d = new Date(date);
@@ -769,7 +760,6 @@
   }
 
   function initMonthPicker(){
-    // สร้างตัวเลือก 12 เดือนล่าสุด
     const sel = $('monthPick');
     const now = new Date();
     const keys = [];
@@ -781,11 +771,10 @@
   }
 
   async function loadPayments12m(){
-    // ดึง payments 12 เดือนล่าสุด (นับจากต้นเดือนเก่าสุดใน picker)
     const sel = $('monthPick');
     if (!sel.value) initMonthPicker();
 
-    const oldestKey = sel.options[sel.options.length-1].value; // ตัวสุดท้ายคือเก่าสุด
+    const oldestKey = sel.options[sel.options.length-1].value;
     const [oy,om] = oldestKey.split('-').map(Number);
     const start = new Date(oy, om-1, 1, 0,0,0,0);
 
@@ -811,8 +800,8 @@
 
   function renderPaymentsDashboard(){
     const picked = $('monthPick').value;
-    const monthly = new Map(); // key -> {count, net}
-    const byServicePicked = new Map(); // service -> {count, net}
+    const monthly = new Map();
+    const byServicePicked = new Map();
 
     for(const p of (paymentsRaw||[])){
       const key = monthKey(p.paid_at);
@@ -830,7 +819,6 @@
       }
     }
 
-    // ทำรายการ 12 เดือนตามลำดับ (ใหม่ -> เก่า)
     const sel = $('monthPick');
     const keys = [...sel.options].map(o=>o.value);
 
@@ -853,7 +841,6 @@
     $('kpiBills').textContent = String(pickedAgg.count);
     $('kpiHint').textContent = pickedAgg.count ? `อิงจากการชำระเงินที่บันทึกไว้ใน ${monthLabel(picked)}` : `ยังไม่มีรายการชำระเงินใน ${monthLabel(picked)}`;
 
-    // Top services (เรียงตาม count แล้ว net)
     const top = [...byServicePicked.entries()]
       .map(([name, v])=>({name, ...v}))
       .sort((a,b)=> (b.count-a.count) || (b.net-a.net))
@@ -872,8 +859,7 @@
       : `<tr><td colspan="3" class="muted">— ยังไม่มีข้อมูล —</td></tr>`;
   }
 
-  /* ======================= Reviews functions ======================= */
-
+  /* ======================= Reviews (เดิม) ======================= */
   function stars(n){
     const v = Math.max(0, Math.min(5, Number(n)||0));
     return '★★★★★'.slice(0,v) + '☆☆☆☆☆'.slice(0,5-v);
@@ -930,7 +916,6 @@
           </div>
 
           <div class="stars">${stars(r.rating)}</div>
-
           <div class="review-comment">${escapeHtml(r.comment||'')}</div>
 
           ${imgs.length ? `<div class="review-imgs">${imgHtml}</div>` : `<div class="muted" style="font-size:12px">ไม่มีรูปแนบ</div>`}
@@ -939,7 +924,6 @@
     }).join('');
   }
 
-  // ✅ ลบแล้วโหลดใหม่
   async function deleteReview(reviewId){
     if (!confirm('ยืนยันลบรีวิวนี้?')) return;
 
@@ -993,8 +977,7 @@
     }
   }
 
-  /* ======================= Gallery functions ======================= */
-
+  /* ======================= Gallery (เดิม) ======================= */
   function initGalleryUI(){
     const sel = $('galleryCategory');
     sel.innerHTML = GALLERY_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
@@ -1089,8 +1072,7 @@
     await loadGallery();
   };
 
-  /* ======================= Chats (เดิม) ======================= */
-
+  /* ======================= Chats (เพิ่มส่งรูป) ======================= */
   let chatPeerId = null;
   let chatPeerName = 'ผู้ใช้';
   let chatSubscription = null;
@@ -1106,6 +1088,20 @@
     openChatWith(uid, name);
   }
 
+  function onPickChatImage(e){
+    const f = e.target.files && e.target.files[0];
+    pendingChatImageFile = f || null;
+
+    const hint = $('chatImageHint');
+    if (pendingChatImageFile){
+      hint.style.display = 'block';
+      hint.textContent = `เลือกรูปแล้ว: ${pendingChatImageFile.name} (กดส่งเพื่ออัปโหลด)`;
+    }else{
+      hint.style.display = 'none';
+      hint.textContent = '';
+    }
+  }
+
   async function loadConversations(){
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
@@ -1114,7 +1110,7 @@
 
     const { data: rows, error } = await sb
       .from('messages')
-      .select('chat_id,sender_id,receiver_id,content,created_at')
+      .select('chat_id,sender_id,receiver_id,content,image_url,created_at')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending:false });
@@ -1138,7 +1134,9 @@
       const m = byPeer.get(pid);
       const name = nameMap.get(pid) || 'ผู้ใช้';
       const time = new Date(m.created_at).toLocaleString('th-TH',{ month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-      const snippet = (m.content||'').toString();
+
+      const snippet = (m.image_url ? '[รูปภาพ]' : (m.content||'')).toString();
+
       const selected = (pid===chatPeerId) ? ' selected' : '';
       return `
         <div class="cl-item${selected}" onclick="openChatWith('${pid}','${(name).replace(/'/g,'\\&#39;')}')">
@@ -1197,10 +1195,16 @@
     if(!rows.length){ box.innerHTML = '<div class="muted" style="padding:12px">— ยังไม่มีข้อความ —</div>'; return; }
     box.innerHTML = rows.map(m=>{
       const mine = m.sender_id === myId;
+      const text = (m.content||'');
+      const img  = (m.image_url||'');
+      const hasImg = !!img;
+
       return `
         <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
           <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
-            ${escapeHtml(m.content||'')}
+            ${hasImg ? `<img class="chat-img" src="${img}" onclick="window.open('${img}','_blank')" alt="">` : ``}
+            ${hasImg && text ? `<div style="height:6px"></div>` : ``}
+            ${text ? escapeHtml(text) : ``}
           </div>
         </div>
       `;
@@ -1212,10 +1216,17 @@
     const box = $('chatMessages');
     if (box.innerHTML.includes('ยังไม่มีข้อความ')) box.innerHTML = '';
     const mine = m.sender_id === myId;
+
+    const text = (m.content||'');
+    const img  = (m.image_url||'');
+    const hasImg = !!img;
+
     const html = `
       <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
         <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
-          ${escapeHtml(m.content||'')}
+          ${hasImg ? `<img class="chat-img" src="${img}" onclick="window.open('${img}','_blank')" alt="">` : ``}
+          ${hasImg && text ? `<div style="height:6px"></div>` : ``}
+          ${text ? escapeHtml(text) : ``}
         </div>
       </div>`;
     box.insertAdjacentHTML('beforeend', html);
@@ -1223,21 +1234,70 @@
     loadConversations();
   }
 
+  async function uploadChatImageAndGetUrl(chatId, file){
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+
+    const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'jpg';
+    const path = `${chatId}/${Date.now()}_${user.id}.${ext}`;
+
+    const { error: upErr } = await sb.storage.from('chat').upload(path, file, {
+      contentType: file.type || 'image/jpeg',
+      upsert: false
+    });
+    if (upErr) throw upErr;
+
+    const { data: urlData } = sb.storage.from('chat').getPublicUrl(path);
+    return { publicUrl: urlData.publicUrl, path };
+  }
+
   async function sendChat(){
     const txt = ($('chatInput').value||'').trim();
-    if(!txt) return;
+    const imgFile = pendingChatImageFile;
+
+    if(!txt && !imgFile) return;
+
     const { data:{ user } } = await sb.auth.getUser();
     if(!user || !chatPeerId){ toast('ยังไม่มีห้องแชท', false); return; }
+
     const chatId = computeChatId(user.id, chatPeerId);
 
-    $('chatInput').value = '';
-    const { error } = await sb.from('messages').insert({
-      chat_id: chatId,
-      sender_id: user.id,
-      receiver_id: chatPeerId,
-      content: txt
-    });
-    if (error) toast('ส่งไม่สำเร็จ: '+error.message, false);
+    $('btnSend').disabled = true;
+
+    try{
+      let imageUrl = null;
+      let imagePath = null;
+
+      if (imgFile){
+        const uploaded = await uploadChatImageAndGetUrl(chatId, imgFile);
+        imageUrl = uploaded.publicUrl;
+        imagePath = uploaded.path;
+      }
+
+      $('chatInput').value = '';
+      pendingChatImageFile = null;
+      $('chatImage').value = '';
+      $('chatImageHint').style.display = 'none';
+      $('chatImageHint').textContent = '';
+
+      const payload = {
+        chat_id: chatId,
+        sender_id: user.id,
+        receiver_id: chatPeerId,
+        content: txt || null,
+        msg_type: (imageUrl ? (txt ? 'mixed' : 'image') : 'text'),
+        image_url: imageUrl,
+        image_path: imagePath
+      };
+
+      const { error } = await sb.from('messages').insert(payload);
+      if (error) toast('ส่งไม่สำเร็จ: '+error.message, false);
+    }catch(e){
+      console.error(e);
+      toast('ส่งรูป/ข้อความไม่สำเร็จ: '+(e?.message||e), false);
+    }finally{
+      $('btnSend').disabled = false;
+    }
   }
 </script>
 </body>

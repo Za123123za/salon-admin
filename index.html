@@ -346,7 +346,7 @@
 <script>
   // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4'; // << ใส่ของจริงของคุณ (ผมตัดออกเพื่อความปลอดภัย)
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
   const GALLERY_CATEGORIES = [
     { id: 'haircut_short',     label: 'ตัดผมหญิง - ผมสั้น' },
@@ -859,7 +859,7 @@
       : `<tr><td colspan="3" class="muted">— ยังไม่มีข้อมูล —</td></tr>`;
   }
 
-  /* ======================= Reviews (เดิม) ======================= */
+  /* ======================= Reviews ======================= */
   function stars(n){
     const v = Math.max(0, Math.min(5, Number(n)||0));
     return '★★★★★'.slice(0,v) + '☆☆☆☆☆'.slice(0,5-v);
@@ -977,7 +977,7 @@
     }
   }
 
-  /* ======================= Gallery (เดิม) ======================= */
+  /* ======================= Gallery ======================= */
   function initGalleryUI(){
     const sel = $('galleryCategory');
     sel.innerHTML = GALLERY_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
@@ -1072,7 +1072,7 @@
     await loadGallery();
   };
 
-  /* ======================= Chats (เพิ่มส่งรูป) ======================= */
+  /* ======================= Chats (ส่งรูป + กัน content not null) ======================= */
   let chatPeerId = null;
   let chatPeerName = 'ผู้ใช้';
   let chatSubscription = null;
@@ -1115,7 +1115,10 @@
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending:false });
 
-    if (error){ $('chatListItems').innerHTML = '<div class="muted" style="padding:12px">โหลดห้องไม่สำเร็จ</div>'; return; }
+    if (error){
+      $('chatListItems').innerHTML = '<div class="muted" style="padding:12px">โหลดห้องไม่สำเร็จ</div>';
+      return;
+    }
 
     const byPeer = new Map();
     for(const m of (rows||[])){
@@ -1134,9 +1137,7 @@
       const m = byPeer.get(pid);
       const name = nameMap.get(pid) || 'ผู้ใช้';
       const time = new Date(m.created_at).toLocaleString('th-TH',{ month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-
       const snippet = (m.image_url ? '[รูปภาพ]' : (m.content||'')).toString();
-
       const selected = (pid===chatPeerId) ? ' selected' : '';
       return `
         <div class="cl-item${selected}" onclick="openChatWith('${pid}','${(name).replace(/'/g,'\\&#39;')}')">
@@ -1193,6 +1194,7 @@
   function renderChatRows(rows, myId){
     const box = $('chatMessages');
     if(!rows.length){ box.innerHTML = '<div class="muted" style="padding:12px">— ยังไม่มีข้อความ —</div>'; return; }
+
     box.innerHTML = rows.map(m=>{
       const mine = m.sender_id === myId;
       const text = (m.content||'');
@@ -1209,6 +1211,7 @@
         </div>
       `;
     }).join('');
+
     box.scrollTop = box.scrollHeight;
   }
 
@@ -1238,8 +1241,12 @@
     const { data:{ user } } = await sb.auth.getUser();
     if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
 
+    // ปลอดภัยกับชื่อไฟล์
     const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'jpg';
-    const path = `${chatId}/${Date.now()}_${user.id}.${ext}`;
+    const safeExt = String(ext || 'jpg').replace(/[^a-zA-Z0-9]/g,'').slice(0,10) || 'jpg';
+
+    // ⚠️ bucket ต้องมีชื่อ "chat"
+    const path = `${chatId}/${Date.now()}_${user.id}.${safeExt}`;
 
     const { error: upErr } = await sb.storage.from('chat').upload(path, file, {
       contentType: file.type || 'image/jpeg',
@@ -1266,28 +1273,27 @@
 
     try{
       let imageUrl = null;
-      let imagePath = null;
 
       if (imgFile){
         const uploaded = await uploadChatImageAndGetUrl(chatId, imgFile);
         imageUrl = uploaded.publicUrl;
-        imagePath = uploaded.path;
       }
 
+      // clear ui
       $('chatInput').value = '';
       pendingChatImageFile = null;
       $('chatImage').value = '';
       $('chatImageHint').style.display = 'none';
       $('chatImageHint').textContent = '';
 
+      // ✅ สำคัญ: content ห้ามเป็น null (กัน not null constraint)
       const payload = {
         chat_id: chatId,
         sender_id: user.id,
         receiver_id: chatPeerId,
-        content: txt || null,
+        content: txt || '',  // <-- FIX หลัก
         msg_type: (imageUrl ? (txt ? 'mixed' : 'image') : 'text'),
-        image_url: imageUrl,
-        image_path: imagePath
+        image_url: imageUrl
       };
 
       const { error } = await sb.from('messages').insert(payload);
@@ -1302,4 +1308,3 @@
 </script>
 </body>
 </html>
-

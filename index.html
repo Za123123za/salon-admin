@@ -47,7 +47,7 @@
     tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
     tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
 
-    .tabs{display:flex;gap:8px;margin-bottom:8px}
+    .tabs{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
     .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
     .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
 
@@ -90,6 +90,16 @@
     .review-comment{white-space:pre-wrap;word-break:break-word}
     .review-imgs{display:flex;gap:8px;flex-wrap:wrap}
     .review-imgs img{width:84px;height:84px;border-radius:10px;object-fit:cover;background:#f3f4f6}
+
+    /* ===== Payments/Sales ===== */
+    .stat-grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:900px){ .stat-grid{grid-template-columns:1.1fr .9fr} }
+    .stat-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kpi .box{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:12px}
+    .kpi .label{font-size:12px;color:#6b7280}
+    .kpi .value{font-size:20px;font-weight:800;margin-top:6px}
+    .small{font-size:12px}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
@@ -122,6 +132,7 @@
   <div id="appSection" class="hidden">
     <div class="tabs">
       <button id="tabBookings" class="active" type="button">คิวช่วง 30 วัน</button>
+      <button id="tabPayments" type="button">ยอดขาย/ชำระเงิน</button>
       <button id="tabCustomers" type="button">ผู้ใช้</button>
       <button id="tabChats" type="button">แชท</button>
       <button id="tabGallery" type="button">รูปตัวอย่าง</button>
@@ -163,7 +174,85 @@
           <h4>ผู้ใช้ชำระเงินแล้ว</h4>
           <span class="pill" id="countPaid">0 รายการ</span>
         </div>
+        <div class="muted small" style="margin:-2px 2px 10px 2px">
+          * เมื่อเปลี่ยนเป็น “ชำระเงินแล้ว” ระบบจะบันทึกลงตาราง payments ทันที (ใช้ทำยอดขาย/ความนิยม)
+        </div>
         <div id="groupPaid" class="cards"></div>
+      </div>
+    </section>
+
+    <!-- PAYMENTS / SALES -->
+    <section id="paymentsPanel" class="card hidden">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h3 style="margin:0">ยอดขาย/ชำระเงิน</h3>
+          <div class="muted" style="margin-top:4px">อ้างอิงจากรายการในตาราง <b>payments</b> (สถานะชำระเงินแล้ว)</div>
+        </div>
+        <div class="row">
+          <select id="monthPick"></select>
+          <button id="btnReloadPayments" class="btn btn-ghost" type="button">รีเฟรช</button>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="group-title" style="margin:0 0 10px 0">
+            <h4>สรุปยอดขายรายเดือน (12 เดือนล่าสุด)</h4>
+            <span class="pill" id="paymentsCount">0 รายการ</span>
+          </div>
+
+          <div class="kpi" style="margin-bottom:12px">
+            <div class="box">
+              <div class="label">ยอดสุทธิเดือนที่เลือก</div>
+              <div class="value" id="kpiNet">฿0</div>
+              <div class="muted small" id="kpiHint">—</div>
+            </div>
+            <div class="box">
+              <div class="label">จำนวนบิลเดือนที่เลือก</div>
+              <div class="value" id="kpiBills">0</div>
+              <div class="muted small">ชำระแล้วเท่านั้น</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>เดือน</th>
+                  <th>จำนวนบิล</th>
+                  <th>ยอดสุทธิ (บาท)</th>
+                </tr>
+              </thead>
+              <tbody id="salesRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="group-title" style="margin:0 0 10px 0">
+            <h4>บริการยอดนิยม (เดือนที่เลือก)</h4>
+            <span class="pill" id="topSvcCount">0 รายการ</span>
+          </div>
+
+          <div class="card" style="padding:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>บริการ</th>
+                  <th>จำนวน</th>
+                  <th>ยอดสุทธิ</th>
+                </tr>
+              </thead>
+              <tbody id="topServiceRows"></tbody>
+            </table>
+          </div>
+
+          <div class="muted small" style="margin-top:10px">
+            * ความนิยมอิงจากจำนวนครั้งที่ “ชำระเงินแล้ว” ในเดือนนั้น
+          </div>
+        </div>
       </div>
     </section>
 
@@ -260,6 +349,23 @@
     { id: 'eyelash',           label: 'ต่อขนตา' },
   ];
 
+  // ====== ราคา (Fallback) — ใช้ชั่วคราวจนกว่าคุณจะใส่ services.price จริง ======
+  // คุณแก้ตัวเลขได้เลยตามร้านของคุณ
+  const PRICE_FALLBACK = {
+    'ตัดผมหญิง - ผมสั้น': 250,
+    'ตัดผมหญิง - ผมยาว':  300,
+    'ตัดผมชาย - ผมสั้น':  200,
+    'ตัดผมชาย - ผมยาว':   250,
+    'ทำเล็บ':              350,
+    'ทำสีผม':              900,
+    'เมคอัพ':              800,
+    'สปา':                 600,
+    'ต่อขนตา':             700,
+  };
+
+  // มัดจำมาตรฐาน (Fallback) — ถ้า bookings.deposit_amount = 0 จะใช้ตัวนี้
+  const DEFAULT_DEPOSIT = 100;
+
   // ====== Utils ======
   const $ = (id)=>document.getElementById(id);
   const sysBox = $('sysMsg');
@@ -271,6 +377,11 @@
     el.style.background = ok ? 'rgba(17,17,17,.9)' : '#b91c1c';
     el.classList.add('show');
     setTimeout(()=>el.classList.remove('show'), 2000);
+  };
+
+  const money = (n)=>{
+    const v = Number(n||0);
+    return '฿' + v.toLocaleString('th-TH', { maximumFractionDigits: 2 });
   };
 
   const STATUS_LABELS = { booked:'จองแล้ว', in_service:'ผู้ใช้เข้าใช้บริการ', paid:'ผู้ใช้ชำระเงินแล้ว', cancelled:'ยกเลิก' };
@@ -286,10 +397,14 @@
   // ===== Reviews state =====
   let reviewsRaw = [];
 
+  // ===== Payments state =====
+  let paymentsRaw = [];
+
   window.addEventListener('DOMContentLoaded', () => {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     bindEvents();
     initGalleryUI();
+    initMonthPicker();
     autoLoginIfSession();
   });
 
@@ -297,6 +412,7 @@
     $('btnLogin').addEventListener('click', onLogin);
     $('btnSignOut').addEventListener('click', onSignOut);
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
+    $('tabPayments').addEventListener('click', ()=>setTab('payments'));
     $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
     $('tabChats').addEventListener('click', ()=>setTab('chats'));
     $('tabGallery').addEventListener('click', ()=>setTab('gallery'));
@@ -307,6 +423,10 @@
     $('searchBooking').addEventListener('input', renderBookings);
     $('searchCustomer').addEventListener('input', renderCustomers);
     $('btnSend').addEventListener('click', sendChat);
+
+    // payments
+    $('btnReloadPayments').addEventListener('click', loadPayments12m);
+    $('monthPick').addEventListener('change', renderPaymentsDashboard);
 
     // gallery
     $('galleryCategory').addEventListener('change', e => {
@@ -342,7 +462,7 @@
   }
 
   function setTab(which){
-    const tabs = ['bookings','customers','chats','gallery','reviews'];
+    const tabs = ['bookings','payments','customers','chats','gallery','reviews'];
     for(const t of tabs){
       $('tab'+capitalize(t)).classList.toggle('active', t===which);
       $(t+'Panel').classList.toggle('hidden', t!==which);
@@ -350,6 +470,7 @@
     if (which==='chats') loadConversations();
     if (which==='gallery') loadGallery();
     if (which==='reviews') loadReviews();
+    if (which==='payments') loadPayments12m();
   }
   const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
 
@@ -411,8 +532,9 @@
   async function loadBookings30d(){
     const { from, to } = getRange30d();
 
+    // NOTE: เพิ่ม services(id,name,price) เพื่อเอาราคา
     let q = sb.from('bookings')
-      .select('id,user_id,start_at,end_at,status,slip_url,services(name),staff(display_name)')
+      .select('id,user_id,start_at,end_at,status,slip_url,deposit_amount,total_amount,services(id,name,price),staff(display_name)')
       .gte('start_at', from.toISOString())
       .lt('start_at', to.toISOString())
       .order('start_at', { ascending: true });
@@ -443,12 +565,29 @@
   const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   const badge = s => `<span class="badge ${STATUS_CLASS[s]||'b-booked'}">${STATUS_LABELS[s]||s}</span>`;
 
+  function calcAmountsForBooking(b){
+    const svcName = b.services?.name || '—';
+    const svcPriceDb = Number(b.services?.price || 0);
+    const svcPriceFallback = Number(PRICE_FALLBACK[svcName] || 0);
+
+    // total_amount: ถ้ามีใน booking ใช้ก่อน, ไม่งั้นใช้ services.price, ไม่งั้นใช้ fallback map
+    const total = Number(b.total_amount || 0) || svcPriceDb || svcPriceFallback || 0;
+
+    // deposit_amount: ถ้ามีใช้ก่อน ไม่งั้นใช้ DEFAULT_DEPOSIT (ถ้าราคา 0 จะเป็น 0)
+    const deposit = Number(b.deposit_amount || 0) || (total>0 ? DEFAULT_DEPOSIT : 0);
+
+    const net = Math.max(0, total - deposit);
+    return { total, deposit, net, svcName };
+  }
+
   function makeCard(b){
     const prof = profilesMap.get(b.user_id) || {};
     const name = prof.username || '—';
     const addr = prof.address || '—';
     const svc  = b.services?.name || '—';
     const stf  = b.staff?.display_name || '—';
+
+    const amt = calcAmountsForBooking(b);
 
     const sel = `
       <select data-bid="${b.id}" class="statusSel">
@@ -462,6 +601,10 @@
       ? `<button class="btn btn-ghost" type="button" onclick="window.open('${b.slip_url}','_blank')">ดูสลิป</button>`
       : `<span class="muted" style="font-size:12px">ไม่มีหลักฐานโอน</span>`;
 
+    const priceLine = (amt.total>0)
+      ? `<div class="kv"><div class="k">ราคา</div><div class="v">${money(amt.total)} <span class="muted small"> (มัดจำ ${money(amt.deposit)} / สุทธิ ${money(amt.net)})</span></div></div>`
+      : `<div class="kv"><div class="k">ราคา</div><div class="v muted">ยังไม่ตั้งราคา</div></div>`;
+
     return `
       <div class="booking-card" data-bid="${b.id}">
         <div class="card-head">
@@ -471,6 +614,7 @@
         <div class="card-body">
           <div class="kv"><div class="k">ลูกค้า</div><div class="v">${name}</div></div>
           <div class="kv"><div class="k">บริการ</div><div class="v">${svc}</div></div>
+          ${priceLine}
           <div class="kv"><div class="k">ช่าง</div><div class="v">${stf}</div></div>
           <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
         </div>
@@ -515,15 +659,66 @@
     $('countPaid').textContent      = `${listPaid.length} รายการ`;
   }
 
+  // ====== บันทึกชำระเงินลง payments เมื่อเปลี่ยน status เป็น paid ======
+  async function ensurePaymentRecorded(bookingId){
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+
+    // 1) ดึง booking + service + user_id
+    const { data: b, error: bErr } = await sb
+      .from('bookings')
+      .select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price)')
+      .eq('id', bookingId)
+      .maybeSingle();
+
+    if (bErr) throw bErr;
+    if (!b) throw new Error('ไม่พบ booking');
+
+    const amt = calcAmountsForBooking(b);
+
+    // 2) upsert payments (booking_id unique)
+    const payload = {
+      booking_id: b.id,
+      user_id: b.user_id,
+      service_id: b.services?.id || null,
+      service_name: amt.svcName || (b.services?.name || '—'),
+      total_amount: amt.total,
+      deposit_amount: amt.deposit,
+      net_amount: amt.net,
+      paid_at: new Date().toISOString(),
+    };
+
+    const { error: upErr } = await sb
+      .from('payments')
+      .upsert(payload, { onConflict: 'booking_id' });
+
+    if (upErr) {
+      // ถ้าตารางยังไม่ถูกสร้าง/ไม่มีสิทธิ์ จะ error ตรงนี้
+      throw upErr;
+    }
+  }
+
   async function onChangeStatus(bookingId, newStatus){
     try{
+      // ถ้าเปลี่ยนเป็น paid -> บันทึก payments ก่อน (เพื่อให้แน่ใจว่า “จำว่า paid” จริง)
+      if (newStatus === 'paid'){
+        await ensurePaymentRecorded(bookingId);
+      }
+
       const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
       if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
+
       bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
       renderBookings();
       toast('อัปเดตสถานะเรียบร้อย');
+
+      // รีโหลด dashboard ยอดขายให้ทันที
+      if (newStatus === 'paid') {
+        await loadPayments12m();
+      }
     }catch(e){
-      toast('เกิดข้อผิดพลาด: '+e.message, false);
+      toast('เกิดข้อผิดพลาด: '+(e?.message||e), false);
+      console.error(e);
     }
   }
 
@@ -559,6 +754,123 @@
     await loadBookings30d();
     toast('กรองการจองตามผู้ใช้แล้ว');
   };
+
+  /* ======================= Payments/Sales ======================= */
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function monthKey(date){
+    const d = new Date(date);
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+  }
+  function monthLabel(key){
+    const [y,m] = key.split('-').map(Number);
+    const d = new Date(y, m-1, 1);
+    return d.toLocaleDateString('th-TH', { year:'numeric', month:'long' });
+  }
+
+  function initMonthPicker(){
+    // สร้างตัวเลือก 12 เดือนล่าสุด
+    const sel = $('monthPick');
+    const now = new Date();
+    const keys = [];
+    for(let i=0;i<12;i++){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      keys.push(monthKey(d));
+    }
+    sel.innerHTML = keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+  }
+
+  async function loadPayments12m(){
+    // ดึง payments 12 เดือนล่าสุด (นับจากต้นเดือนเก่าสุดใน picker)
+    const sel = $('monthPick');
+    if (!sel.value) initMonthPicker();
+
+    const oldestKey = sel.options[sel.options.length-1].value; // ตัวสุดท้ายคือเก่าสุด
+    const [oy,om] = oldestKey.split('-').map(Number);
+    const start = new Date(oy, om-1, 1, 0,0,0,0);
+
+    $('salesRows').innerHTML = `<tr><td colspan="3" class="muted">กำลังโหลด...</td></tr>`;
+
+    const { data: rows, error } = await sb
+      .from('payments')
+      .select('id,booking_id,service_name,paid_at,total_amount,deposit_amount,net_amount')
+      .gte('paid_at', start.toISOString())
+      .order('paid_at', { ascending:false })
+      .limit(5000);
+
+    if (error){
+      $('salesRows').innerHTML = `<tr><td colspan="3" class="muted" style="color:#b91c1c">โหลด payments ไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+      toast('โหลด payments ไม่สำเร็จ (เช็คว่ามีตาราง payments + RLS policy แล้ว)', false);
+      return;
+    }
+
+    paymentsRaw = rows || [];
+    $('paymentsCount').textContent = `${paymentsRaw.length} รายการ`;
+    renderPaymentsDashboard();
+  }
+
+  function renderPaymentsDashboard(){
+    const picked = $('monthPick').value;
+    const monthly = new Map(); // key -> {count, net}
+    const byServicePicked = new Map(); // service -> {count, net}
+
+    for(const p of (paymentsRaw||[])){
+      const key = monthKey(p.paid_at);
+      if (!monthly.has(key)) monthly.set(key, { count:0, net:0 });
+      const m = monthly.get(key);
+      m.count += 1;
+      m.net += Number(p.net_amount||0);
+
+      if (key === picked){
+        const svc = p.service_name || '—';
+        if (!byServicePicked.has(svc)) byServicePicked.set(svc, { count:0, net:0 });
+        const s = byServicePicked.get(svc);
+        s.count += 1;
+        s.net += Number(p.net_amount||0);
+      }
+    }
+
+    // ทำรายการ 12 เดือนตามลำดับ (ใหม่ -> เก่า)
+    const sel = $('monthPick');
+    const keys = [...sel.options].map(o=>o.value);
+
+    const rowsHtml = keys.map(k=>{
+      const m = monthly.get(k) || {count:0, net:0};
+      const isPicked = (k===picked);
+      return `
+        <tr style="${isPicked?'outline:2px solid #00acc1; outline-offset:-2px':''}">
+          <td>${monthLabel(k)}</td>
+          <td>${m.count}</td>
+          <td><b>${money(m.net)}</b></td>
+        </tr>
+      `;
+    }).join('');
+
+    $('salesRows').innerHTML = rowsHtml || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
+
+    const pickedAgg = monthly.get(picked) || {count:0, net:0};
+    $('kpiNet').textContent = money(pickedAgg.net);
+    $('kpiBills').textContent = String(pickedAgg.count);
+    $('kpiHint').textContent = pickedAgg.count ? `อิงจากการชำระเงินที่บันทึกไว้ใน ${monthLabel(picked)}` : `ยังไม่มีรายการชำระเงินใน ${monthLabel(picked)}`;
+
+    // Top services (เรียงตาม count แล้ว net)
+    const top = [...byServicePicked.entries()]
+      .map(([name, v])=>({name, ...v}))
+      .sort((a,b)=> (b.count-a.count) || (b.net-a.net))
+      .slice(0, 12);
+
+    $('topSvcCount').textContent = `${top.length} รายการ`;
+
+    $('topServiceRows').innerHTML = top.length
+      ? top.map(x=>`
+          <tr>
+            <td>${escapeHtml(x.name)}</td>
+            <td>${x.count}</td>
+            <td><b>${money(x.net)}</b></td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="3" class="muted">— ยังไม่มีข้อมูล —</td></tr>`;
+  }
 
   /* ======================= Reviews functions ======================= */
 
@@ -627,65 +939,59 @@
     }).join('');
   }
 
-  // ✅ จุดสำคัญ: ลบแล้วต้อง “โหลดใหม่” ไม่งั้นการ์ดจะค้างในหน้า
- async function deleteReview(reviewId){
-  if (!confirm('ยืนยันลบรีวิวนี้?')) return;
+  // ✅ ลบแล้วโหลดใหม่
+  async function deleteReview(reviewId){
+    if (!confirm('ยืนยันลบรีวิวนี้?')) return;
 
-  try{
-    // 1) ดึงรูปของรีวิวนี้
-    const { data: imgs, error: imgSelErr } = await sb
-      .from('review_images')
-      .select('id,storage_path')
-      .eq('review_id', reviewId);
+    try{
+      const { data: imgs, error: imgSelErr } = await sb
+        .from('review_images')
+        .select('id,storage_path')
+        .eq('review_id', reviewId);
 
-    if (imgSelErr) throw imgSelErr;
+      if (imgSelErr) throw imgSelErr;
 
-    // 2) ลบไฟล์จาก storage (ถ้ามี)
-    if (imgs && imgs.length){
-      const paths = imgs.map(x=>x.storage_path).filter(Boolean);
-      if (paths.length){
-        const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
-        if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
+      if (imgs && imgs.length){
+        const paths = imgs.map(x=>x.storage_path).filter(Boolean);
+        if (paths.length){
+          const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
+          if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
+        }
+
+        const { data: imgDeleted, error: imgDelErr } = await sb
+          .from('review_images')
+          .delete()
+          .eq('review_id', reviewId)
+          .select('id');
+
+        if (imgDelErr) throw imgDelErr;
+        if (Array.isArray(imgDeleted) && imgDeleted.length === 0 && imgs.length > 0) {
+          toast('ลบรูปไม่สำเร็จ (สิทธิ์ไม่พอ/RLS บล็อก)', false);
+          return;
+        }
       }
 
-      // 3) ลบ rows ใน review_images (เช็กว่าลบโดนจริง)
-      const { data: imgDeleted, error: imgDelErr } = await sb
-        .from('review_images')
+      const { data: revDeleted, error: revDelErr } = await sb
+        .from('reviews')
         .delete()
-        .eq('review_id', reviewId)
-        .select('id'); // ✅ สำคัญ
+        .eq('id', reviewId)
+        .select('id');
 
-      if (imgDelErr) throw imgDelErr;
-      // ถ้า RLS บล็อก บางทีจะได้ [] โดยไม่ error
-      if (Array.isArray(imgDeleted) && imgDeleted.length === 0 && imgs.length > 0) {
-        toast('ลบรูปไม่สำเร็จ (สิทธิ์ไม่พอ/RLS บล็อก)', false);
+      if (revDelErr) throw revDelErr;
+
+      if (!Array.isArray(revDeleted) || revDeleted.length === 0) {
+        toast('ลบไม่สำเร็จ: ไม่พบแถวที่จะลบ หรือ RLS ไม่อนุญาต', false);
         return;
       }
+
+      toast('ลบรีวิวเรียบร้อย ✅');
+      await loadReviews();
+
+    }catch(e){
+      toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
+      console.error(e);
     }
-
-    // 4) ลบ review หลัก (เช็กว่าลบโดนจริง)
-    const { data: revDeleted, error: revDelErr } = await sb
-      .from('reviews')
-      .delete()
-      .eq('id', reviewId)
-      .select('id'); // ✅ สำคัญ
-
-    if (revDelErr) throw revDelErr;
-
-    if (!Array.isArray(revDeleted) || revDeleted.length === 0) {
-      toast('ลบไม่สำเร็จ: ไม่พบแถวที่จะลบ หรือ RLS ไม่อนุญาต', false);
-      return;
-    }
-
-    toast('ลบรีวิวเรียบร้อย ✅');
-    await loadReviews();
-
-  }catch(e){
-    toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
-    console.error(e);
   }
-}
-
 
   /* ======================= Gallery functions ======================= */
 
@@ -936,4 +1242,3 @@
 </script>
 </body>
 </html>
-

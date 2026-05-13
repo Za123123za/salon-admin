@@ -68,6 +68,7 @@
     <div class="tabs">
       <button id="tabBookings" class="active" type="button">คิวช่วง 30 วัน</button>
       <button id="tabStaffs" type="button">ช่าง</button>
+      <button id="tabPayments" type="button">ยอดขาย/ชำระเงิน</button>
       <button id="tabGallery" type="button">รูปตัวอย่าง</button>
       <button id="tabReviews" type="button">รีวิว</button>
       <button id="tabCustomers" type="button">ผู้ใช้</button>
@@ -80,6 +81,50 @@
       </div>
       <div class="muted" id="rangeText" style="margin:10px 0"></div>
       <div id="bookingList" class="cards"></div>
+    </section>
+
+    <section id="paymentsPanel" class="card hidden">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h3 style="margin:0">ยอดขาย/ชำระเงิน</h3>
+          <div class="muted" style="margin-top:4px">คำนวณจากตาราง payments</div>
+        </div>
+        <div class="row">
+          <select id="monthPick"></select>
+          <button id="btnReloadPayments" class="btn btn-ghost" type="button">รีเฟรช</button>
+        </div>
+      </div>
+
+      <div class="cards" style="margin-top:12px">
+        <div class="card">
+          <div class="muted">ยอดสุทธิเดือนที่เลือก</div>
+          <h2 id="kpiNet" style="margin:8px 0 0 0">฿0</h2>
+        </div>
+        <div class="card">
+          <div class="muted">จำนวนบิลเดือนที่เลือก</div>
+          <h2 id="kpiBills" style="margin:8px 0 0 0">0</h2>
+        </div>
+        <div class="card">
+          <div class="muted">รายการ payments ทั้งหมดที่โหลด</div>
+          <h2 id="paymentsCount" style="margin:8px 0 0 0">0</h2>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">สรุปยอดขายรายเดือน</h4>
+        <table>
+          <thead><tr><th>เดือน</th><th>จำนวนบิล</th><th>ยอดสุทธิ</th></tr></thead>
+          <tbody id="salesRows"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">บริการยอดนิยมเดือนที่เลือก</h4>
+        <table>
+          <thead><tr><th>บริการ</th><th>จำนวน</th><th>ยอดสุทธิ</th></tr></thead>
+          <tbody id="topServiceRows"></tbody>
+        </table>
+      </div>
     </section>
 
     <section id="staffsPanel" class="card hidden">
@@ -152,7 +197,7 @@
 
 <script>
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
+  const SUPABASE_ANON_KEY = 'ใส่_ANON_PUBLIC_KEY_ของคุณตรงนี้';
 
   const GALLERY_CATEGORIES = [
     { id: 'haircut_short', label: 'ตัดผมหญิง - ผมสั้น' },
@@ -178,11 +223,13 @@
   let bookingsRaw = [];
   let customersRaw = [];
   let reviewsRaw = [];
+  let paymentsRaw = [];
 
   window.addEventListener('DOMContentLoaded', () => {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     bindEvents();
     initGalleryUI();
+    initMonthPicker();
     autoLoginIfSession();
   });
 
@@ -191,10 +238,13 @@
     $('btnSignOut').addEventListener('click', onSignOut);
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
     $('tabStaffs').addEventListener('click', ()=>setTab('staffs'));
+    $('tabPayments').addEventListener('click', ()=>setTab('payments')); 
     $('tabGallery').addEventListener('click', ()=>setTab('gallery'));
     $('tabReviews').addEventListener('click', ()=>setTab('reviews'));
     $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
     $('btnReload').addEventListener('click', loadBookings30d);
+    $('btnReloadPayments').addEventListener('click', loadPayments12m);
+    $('monthPick').addEventListener('change', renderPaymentsDashboard);
     $('btnSaveStaff').addEventListener('click', saveStaff);
     $('btnReloadStaffs').addEventListener('click', loadStaffs);
     $('btnCancelEditStaff').addEventListener('click', clearStaffForm);
@@ -205,13 +255,14 @@
   }
 
   function setTab(which){
-    const tabs = ['bookings','staffs','gallery','reviews','customers'];
+    const tabs = ['bookings','staffs','payments','gallery','reviews','customers'];
     for(const t of tabs){
       $('tab'+capitalize(t)).classList.toggle('active', t===which);
       $(t+'Panel').classList.toggle('hidden', t!==which);
     }
     if(which==='bookings') loadBookings30d();
     if(which==='staffs') loadStaffs();
+    if(which==='payments') loadPayments12m();
     if(which==='gallery') loadGallery();
     if(which==='reviews') loadReviews();
     if(which==='customers') loadCustomers();
@@ -263,15 +314,125 @@
 
   async function loadBookings30d(){
     const {from,to}=getRange30d();
-    const {data,error}=await sb.from('bookings').select('id,start_at,status,services(name),staff(display_name),profiles:profiles(username)').gte('start_at',from.toISOString()).lt('start_at',to.toISOString()).order('start_at',{ascending:true});
-    if(error){$('bookingList').innerHTML='<div class="muted">โหลดคิวไม่สำเร็จ: '+escapeHtml(error.message)+'</div>';return;}
+
+    const {data,error}=await sb
+      .from('bookings')
+      .select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price),staff(display_name)')
+      .gte('start_at',from.toISOString())
+      .lt('start_at',to.toISOString())
+      .order('start_at',{ascending:true});
+
+    if(error){
+      $('bookingList').innerHTML='<div class="muted">โหลดคิวไม่สำเร็จ: '+escapeHtml(error.message)+'</div>';
+      return;
+    }
+
     bookingsRaw=data||[];
-    $('bookingList').innerHTML = bookingsRaw.length ? bookingsRaw.map(b=>`
+
+    const userIds=[...new Set(bookingsRaw.map(b=>b.user_id).filter(Boolean))];
+    let profileMap=new Map();
+
+    if(userIds.length){
+      const {data:profiles,error:profileErr}=await sb
+        .from('profiles')
+        .select('id,username')
+        .in('id',userIds);
+
+      if(!profileErr){
+        profileMap=new Map((profiles||[]).map(p=>[p.id,p]));
+      }
+    }
+
+    $('bookingList').innerHTML = bookingsRaw.length ? bookingsRaw.map(b=>{
+      const prof=profileMap.get(b.user_id)||{};
+      const total=Number(b.total_amount||b.services?.price||0);
+      const deposit=Number(b.deposit_amount||0);
+      const net=Math.max(0,total-deposit);
+      return `
       <div class="booking-card">
-        <div class="card-head"><strong>${new Date(b.start_at).toLocaleString('th-TH')}</strong><span class="pill">${escapeHtml(b.status)}</span></div>
+        <div class="card-head">
+          <strong>${new Date(b.start_at).toLocaleString('th-TH')}</strong>
+          <span class="pill">${escapeHtml(b.status)}</span>
+        </div>
+        <div class="kv"><div class="k">ลูกค้า</div><div class="v">${escapeHtml(prof.username||'—')}</div></div>
         <div class="kv"><div class="k">บริการ</div><div class="v">${escapeHtml(b.services?.name||'—')}</div></div>
         <div class="kv"><div class="k">ช่าง</div><div class="v">${escapeHtml(b.staff?.display_name||'—')}</div></div>
-      </div>`).join('') : '<div class="muted">— ไม่มีคิว —</div>';
+        <div class="kv"><div class="k">ราคา</div><div class="v">${money(total)} <span class="muted">สุทธิ ${money(net)}</span></div></div>
+      </div>`;
+    }).join('') : '<div class="muted">— ไม่มีคิว —</div>';
+  }
+
+  function pad2(n){return String(n).padStart(2,'0')}
+  function monthKey(date){const d=new Date(date);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`}
+  function monthLabel(key){const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('th-TH',{year:'numeric',month:'long'})}
+
+  function initMonthPicker(){
+    const sel=$('monthPick');
+    if(!sel) return;
+    const now=new Date();
+    const keys=[];
+    for(let i=0;i<12;i++) keys.push(monthKey(new Date(now.getFullYear(),now.getMonth()-i,1)));
+    sel.innerHTML=keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
+  }
+
+  async function loadPayments12m(){
+    if(!$('monthPick').value) initMonthPicker();
+    const oldestKey=$('monthPick').options[$('monthPick').options.length-1].value;
+    const [oy,om]=oldestKey.split('-').map(Number);
+    const start=new Date(oy,om-1,1,0,0,0,0);
+
+    $('salesRows').innerHTML='<tr><td colspan="3" class="muted">กำลังโหลด...</td></tr>';
+
+    const {data,error}=await sb
+      .from('payments')
+      .select('id,booking_id,service_name,paid_at,total_amount,deposit_amount,net_amount')
+      .gte('paid_at',start.toISOString())
+      .order('paid_at',{ascending:false})
+      .limit(5000);
+
+    if(error){
+      $('salesRows').innerHTML=`<tr><td colspan="3" class="muted">โหลด payments ไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+      return;
+    }
+
+    paymentsRaw=data||[];
+    $('paymentsCount').textContent=String(paymentsRaw.length);
+    renderPaymentsDashboard();
+  }
+
+  function renderPaymentsDashboard(){
+    const picked=$('monthPick').value;
+    const monthly=new Map();
+    const byService=new Map();
+
+    for(const p of paymentsRaw){
+      const key=monthKey(p.paid_at);
+      if(!monthly.has(key)) monthly.set(key,{count:0,net:0});
+      const m=monthly.get(key);
+      m.count += 1;
+      m.net += Number(p.net_amount||0);
+
+      if(key===picked){
+        const svc=p.service_name||'—';
+        if(!byService.has(svc)) byService.set(svc,{count:0,net:0});
+        const s=byService.get(svc);
+        s.count += 1;
+        s.net += Number(p.net_amount||0);
+      }
+    }
+
+    const keys=[...$('monthPick').options].map(o=>o.value);
+    $('salesRows').innerHTML=keys.map(k=>{
+      const m=monthly.get(k)||{count:0,net:0};
+      return `<tr><td>${monthLabel(k)}</td><td>${m.count}</td><td><b>${money(m.net)}</b></td></tr>`;
+    }).join('');
+
+    const pickedAgg=monthly.get(picked)||{count:0,net:0};
+    $('kpiNet').textContent=money(pickedAgg.net);
+    $('kpiBills').textContent=String(pickedAgg.count);
+
+    const top=[...byService.entries()].map(([name,v])=>({name,...v})).sort((a,b)=>(b.count-a.count)||(b.net-a.net));
+    $('topServiceRows').innerHTML=top.length?top.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${x.count}</td><td><b>${money(x.net)}</b></td></tr>`).join(''):'<tr><td colspan="3" class="muted">— ยังไม่มีข้อมูล —</td></tr>';
   }
 
   async function saveStaff(){

@@ -5,127 +5,55 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Dashboard</title>
   <style>
-    :root{--teal:#00acc1;--bg:#f6f8fa;--card:#fff;--text:#111;--muted:#6b7280}
+    :root{--teal:#00acc1;--bg:#f6f8fa;--card:#fff;--text:#111;--muted:#6b7280;--pink:#f06292}
     *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
     body{margin:0;background:var(--bg);color:var(--text)}
     header{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--teal);color:#fff}
     .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
     .card{background:var(--card);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
     .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff}
     .btn-ghost{background:#eef3f6;color:#111}
     .btn-danger{background:#b91c1c;color:#fff}
-    input,select,button{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
-    .muted{color:var(--muted)} .hidden{display:none}
-
-    .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
-    .b-booked{background:#fff7ed;color:#b45309}
-    .b-in_service{background:#eef2ff;color:#3730a3}
-    .b-paid{background:#ecfdf5;color:#065f46}
-    .b-cancelled{background:#fef2f2;color:#b91c1c}
-
-    .cards{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:720px){ .cards{grid-template-columns:1fr 1fr} }
-    @media (min-width:1024px){ .cards{grid-template-columns:1fr 1fr 1fr} }
-
-    .booking-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}
-    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .card-time{font-weight:800}
-    .card-body{display:flex;flex-direction:column;gap:6px}
-    .kv{display:flex;gap:8px;align-items:flex-start}
-    .kv .k{min-width:56px;color:var(--muted);font-size:12px}
-    .kv .v{font-weight:600}
-    .card-foot{display:flex;gap:10px;align-items:center;justify-content:space-between}
-    .statusSel{flex:1 1 auto}
-
-    .group-title{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 10px 2px}
-    .group-title h4{margin:0;font-size:16px}
-    .pill{background:#eef3f6;border-radius:999px;padding:4px 8px;font-size:12px}
-
-    table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th,td{padding:10px 12px;text-align:left;background:#fff}
-    tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
-    tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
-
+    input,select,textarea,button{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff}
+    textarea{min-height:70px;resize:vertical}
+    .muted{color:var(--muted)} .hidden{display:none!important}
+    .login{max-width:420px;margin:40px auto}
+    #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
+    #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s;z-index:9999}
+    #toast.show{opacity:1}
     .tabs{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
     .tabs button{padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
     .tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal)}
-
-    .login{max-width:420px;margin:40px auto}
-    #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
-    #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s}
-    #toast.show{opacity:1}
-
-    /* ====== Chats ====== */
-    #chatsLayout{display:grid;grid-template-columns:280px 1fr;gap:14px;min-height:540px}
-    #chatList{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:auto}
-    .cl-head{padding:12px;border-bottom:1px solid #eef2f7;font-weight:700}
-    .cl-item{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid #f2f4f7;cursor:pointer}
-    .cl-item:hover{background:#f9fbfc}
-    .cl-name{font-weight:700}
-    .cl-snippet{font-size:12px;color:#6b7280}
-    .cl-time{margin-left:auto;font-size:12px;color:#9ca3af}
-    .selected{background:#eef8fb}
-    #chatView{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);display:flex;flex-direction:column}
-    #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #eef2f7}
-    #chatMessages{flex:1 1 auto;overflow:auto;padding:10px;background:#f6f8fa}
-    #chatComposer{display:flex;gap:8px;padding:10px;border-top:1px solid #eef2f7;align-items:center}
-    #chatComposer input{flex:1 1 auto}
-
-    /* bubble image */
-    .chat-img{
-      max-width:260px;
-      border-radius:12px;
-      display:block;
-      cursor:pointer;
-    }
-
-    /* ===== Gallery ===== */
+    .cards{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:720px){.cards{grid-template-columns:1fr 1fr}}
+    @media (min-width:1024px){.cards{grid-template-columns:1fr 1fr 1fr}}
+    .booking-card,.staff-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .pill{background:#eef3f6;border-radius:999px;padding:4px 8px;font-size:12px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:12px}
+    .b-booked{background:#fff7ed;color:#b45309}.b-in_service{background:#eef2ff;color:#3730a3}.b-paid{background:#ecfdf5;color:#065f46}.b-cancelled{background:#fef2f2;color:#b91c1c}
+    .kv{display:flex;gap:8px;align-items:flex-start}.kv .k{min-width:70px;color:var(--muted);font-size:12px}.kv .v{font-weight:600}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}th,td{padding:10px 12px;text-align:left;background:#fff}tr td:first-child,tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}tr td:last-child,tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
     #galleryControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
     #galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-    .g-item{background:#fff;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:8px;display:flex;flex-direction:column;gap:6px}
-    .g-item img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:3/4}
-    .g-item button{align-self:flex-end}
-
-    /* ===== Reviews ===== */
-    .review-grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:840px){ .review-grid{grid-template-columns:1fr 1fr} }
-    .review-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}
-    .review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-    .review-name{font-weight:800}
-    .review-meta{color:#9ca3af;font-size:12px}
-    .stars{color:#f59e0b;letter-spacing:1px}
-    .review-comment{white-space:pre-wrap;word-break:break-word}
-    .review-imgs{display:flex;gap:8px;flex-wrap:wrap}
-    .review-imgs img{width:84px;height:84px;border-radius:10px;object-fit:cover;background:#f3f4f6}
-
-    /* ===== Payments ===== */
-    .stat-grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media (min-width:900px){ .stat-grid{grid-template-columns:1.1fr .9fr} }
-    .stat-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px}
-    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .kpi .box{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:12px}
-    .kpi .label{font-size:12px;color:#6b7280}
-    .kpi .value{font-size:20px;font-weight:800;margin-top:6px}
-    .small{font-size:12px}
+    .g-item{background:#fff;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.05);padding:8px;display:flex;flex-direction:column;gap:6px}.g-item img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:3/4}.g-item button{align-self:flex-end}
+    .staff-img{width:100%;height:190px;object-fit:cover;border-radius:12px;background:#f3f4f6}.staff-placeholder{height:190px;border-radius:12px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:56px}
+    .form-grid{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:800px){.form-grid{grid-template-columns:1fr 1fr 1fr}}
+    .review-grid{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:840px){.review-grid{grid-template-columns:1fr 1fr}}
+    .review-card{background:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.06);padding:14px;display:flex;flex-direction:column;gap:10px}.stars{color:#f59e0b;letter-spacing:1px}.review-imgs{display:flex;gap:8px;flex-wrap:wrap}.review-imgs img{width:84px;height:84px;border-radius:10px;object-fit:cover;background:#f3f4f6}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
 <header>
-  <div class="row">
-    <strong>Admin Dashboard</strong>
-    <span id="adminName" class="muted"></span>
-  </div>
-  <div class="row">
-    <button id="btnSignOut" class="btn btn-ghost hidden" type="button">ออกจากระบบ</button>
-  </div>
+  <div class="row"><strong>Admin Dashboard</strong><span id="adminName" class="muted"></span></div>
+  <button id="btnSignOut" class="btn btn-ghost hidden" type="button">ออกจากระบบ</button>
 </header>
 
 <div class="wrap">
-  <!-- LOGIN -->
   <div id="loginSection" class="card login">
-    <h3 style="margin:0 0 10px 0;">เข้าสู่ระบบแอดมิน</h3>
+    <h3 style="margin:0 0 10px 0">เข้าสู่ระบบแอดมิน</h3>
     <p class="muted" style="margin-top:0">กรอกอีเมล/รหัสผ่านบัญชีแอดมิน</p>
     <div id="sysMsg" class="hidden"></div>
     <div class="row">
@@ -136,280 +64,125 @@
     <p id="loginMsg" class="muted" style="margin-top:10px"></p>
   </div>
 
-  <!-- APP -->
   <div id="appSection" class="hidden">
     <div class="tabs">
       <button id="tabBookings" class="active" type="button">คิวช่วง 30 วัน</button>
-      <button id="tabPayments" type="button">ยอดขาย/ชำระเงิน</button>
-      <button id="tabCustomers" type="button">ผู้ใช้</button>
-      <button id="tabChats" type="button">แชท</button>
+      <button id="tabStaffs" type="button">ช่าง</button>
       <button id="tabGallery" type="button">รูปตัวอย่าง</button>
       <button id="tabReviews" type="button">รีวิว</button>
+      <button id="tabCustomers" type="button">ผู้ใช้</button>
     </div>
 
-    <!-- BOOKINGS -->
     <section id="bookingsPanel" class="card">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">คิวช่วง 30 วัน</h3>
-        <div class="row">
-          <input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง/ที่อยู่" />
-          <button id="btnClearFilter" class="btn btn-ghost" type="button" title="ล้างตัวกรองผู้ใช้">ล้างกรอง</button>
-          <button id="btnReload" class="btn btn-ghost" type="button">รีเฟรช</button>
-        </div>
+        <button id="btnReload" class="btn btn-ghost" type="button">รีเฟรช</button>
       </div>
-      <div style="height:10px"></div>
-      <div class="muted" id="rangeText"></div>
-      <div style="height:10px"></div>
-
-      <div class="card">
-        <div class="group-title">
-          <h4>จองแล้ว</h4>
-          <span class="pill" id="countBooked">0 รายการ</span>
-        </div>
-        <div id="groupBooked" class="cards"></div>
-      </div>
-
-      <div class="card">
-        <div class="group-title">
-          <h4>ผู้ใช้เข้าใช้บริการ</h4>
-          <span class="pill" id="countInService">0 รายการ</span>
-        </div>
-        <div id="groupInService" class="cards"></div>
-      </div>
-
-      <div class="card">
-        <div class="group-title">
-          <h4>ผู้ใช้ชำระเงินแล้ว</h4>
-          <span class="pill" id="countPaid">0 รายการ</span>
-        </div>
-        <div class="muted small" style="margin:-2px 2px 10px 2px">
-          * เมื่อเปลี่ยนเป็น “ชำระเงินแล้ว” ระบบจะบันทึกลงตาราง payments ทันที (ใช้ทำยอดขาย/ความนิยม)
-        </div>
-        <div id="groupPaid" class="cards"></div>
-      </div>
+      <div class="muted" id="rangeText" style="margin:10px 0"></div>
+      <div id="bookingList" class="cards"></div>
     </section>
 
-    <!-- PAYMENTS / SALES -->
-    <section id="paymentsPanel" class="card hidden">
+    <section id="staffsPanel" class="card hidden">
       <div class="row" style="justify-content:space-between">
         <div>
-          <h3 style="margin:0">ยอดขาย/ชำระเงิน</h3>
-          <div class="muted" style="margin-top:4px">อ้างอิงจากรายการในตาราง <b>payments</b> (สถานะชำระเงินแล้ว)</div>
+          <h3 style="margin:0">จัดการช่าง</h3>
+          <div class="muted" style="margin-top:4px">เพิ่มรูปและข้อมูลช่างเพื่อให้แอป Flutter ดึงไปแสดงจากตาราง staff</div>
         </div>
-        <div class="row">
-          <select id="monthPick"></select>
-          <button id="btnReloadPayments" class="btn btn-ghost" type="button">รีเฟรช</button>
-        </div>
+        <button id="btnReloadStaffs" class="btn btn-ghost" type="button">รีเฟรช</button>
       </div>
 
-      <div style="height:12px"></div>
-
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="group-title" style="margin:0 0 10px 0">
-            <h4>สรุปยอดขายรายเดือน (12 เดือนล่าสุด)</h4>
-            <span class="pill" id="paymentsCount">0 รายการ</span>
-          </div>
-
-          <div class="kpi" style="margin-bottom:12px">
-            <div class="box">
-              <div class="label">ยอดสุทธิเดือนที่เลือก</div>
-              <div class="value" id="kpiNet">฿0</div>
-              <div class="muted small" id="kpiHint">—</div>
-            </div>
-            <div class="box">
-              <div class="label">จำนวนบิลเดือนที่เลือก</div>
-              <div class="value" id="kpiBills">0</div>
-              <div class="muted small">ชำระแล้วเท่านั้น</div>
-            </div>
-          </div>
-
-          <div class="card" style="padding:10px">
-            <table>
-              <thead>
-                <tr>
-                  <th>เดือน</th>
-                  <th>จำนวนบิล</th>
-                  <th>ยอดสุทธิ (บาท)</th>
-                </tr>
-              </thead>
-              <tbody id="salesRows"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="stat-card">
-          <div class="group-title" style="margin:0 0 10px 0">
-            <h4>บริการยอดนิยม (เดือนที่เลือก)</h4>
-            <span class="pill" id="topSvcCount">0 รายการ</span>
-          </div>
-
-          <div class="card" style="padding:10px">
-            <table>
-              <thead>
-                <tr>
-                  <th>บริการ</th>
-                  <th>จำนวน</th>
-                  <th>ยอดสุทธิ</th>
-                </tr>
-              </thead>
-              <tbody id="topServiceRows"></tbody>
-            </table>
-          </div>
-
-          <div class="muted small" style="margin-top:10px">
-            * ความนิยมอิงจากจำนวนครั้งที่ “ชำระเงินแล้ว” ในเดือนนั้น
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CUSTOMERS -->
-    <section id="customersPanel" class="card hidden">
-      <div class="row" style="justify-content:space-between">
-        <h3 style="margin:0">ผู้ใช้</h3>
-        <input id="searchCustomer" placeholder="ค้นหา: ชื่อผู้ใช้" />
-      </div>
-      <div style="height:10px"></div>
       <div class="card">
-        <table>
-          <thead>
-            <tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th><th></th></tr>
-          </thead>
-          <tbody id="customerRows"></tbody>
-        </table>
+        <input id="editingStaffId" type="hidden" />
+        <input id="editingStaffStoragePath" type="hidden" />
+        <div class="form-grid">
+          <input id="staffName" placeholder="ชื่อช่าง เช่น ลิซ่า" />
+          <input id="staffRole" placeholder="ตำแหน่ง เช่น ช่างทำผม" />
+          <input id="staffRating" type="number" min="0" max="5" step="0.1" placeholder="คะแนน เช่น 4.8" />
+        </div>
+        <div style="height:10px"></div>
+        <div class="form-grid">
+          <textarea id="staffDescription" placeholder="ความเชี่ยวชาญ/รายละเอียด"></textarea>
+          <textarea id="staffExperience" placeholder="ประสบการณ์"></textarea>
+          <textarea id="staffEducation" placeholder="การศึกษา/ใบรับรอง"></textarea>
+        </div>
+        <div style="height:10px"></div>
+        <div class="row">
+          <input id="staffImage" type="file" accept="image/*" />
+          <label class="row" style="gap:6px"><input id="staffIsActive" type="checkbox" checked /> แสดงในแอป</label>
+          <button id="btnSaveStaff" class="btn" type="button">บันทึกช่าง</button>
+          <button id="btnCancelEditStaff" class="btn btn-ghost hidden" type="button">ยกเลิกแก้ไข</button>
+        </div>
+        <div id="staffFormHint" class="muted" style="margin-top:8px;font-size:12px">* ถ้าไม่เลือกรูป ระบบจะบันทึกเฉพาะข้อมูล</div>
       </div>
+
+      <div id="staffGrid" class="cards"></div>
     </section>
 
-    <!-- CHATS -->
-    <section id="chatsPanel" class="hidden">
-      <div id="chatsLayout">
-        <div id="chatList">
-          <div class="cl-head">ผู้ใช้ที่คุยด้วย</div>
-          <div id="chatListItems"></div>
-        </div>
-        <div id="chatView">
-          <div id="chatHeader">
-            <strong id="chatTitle">เลือกผู้ใช้ทางซ้ายเพื่อเริ่มคุย</strong>
-            <span id="chatHeaderRight" class="muted"></span>
-          </div>
-          <div id="chatMessages"></div>
-
-          <div id="chatComposer">
-            <input id="chatInput" placeholder="พิมพ์ข้อความ..." />
-            <input id="chatImage" type="file" accept="image/*" class="hidden" />
-            <button class="btn btn-ghost" type="button" id="btnPickImage">📷</button>
-            <button class="btn" type="button" id="btnSend">ส่ง</button>
-          </div>
-          <div id="chatImageHint" class="muted small" style="padding:0 12px 12px 12px; display:none;"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- GALLERY PANEL -->
     <section id="galleryPanel" class="card hidden">
       <h3 style="margin-top:0">รูปตัวอย่างบริการ</h3>
-      <p class="muted" style="margin-top:4px;margin-bottom:10px">
-        เลือกหมวด แล้วอัปโหลด/ลบรูปได้ รูปเหล่านี้จะไปแสดงในหน้า haircut, nail ฯลฯ
-      </p>
-
+      <p class="muted">เลือกหมวด แล้วอัปโหลด/ลบรูปได้</p>
       <div id="galleryControls">
         <select id="galleryCategory"></select>
         <input id="galleryFile" type="file" accept="image/*" multiple />
         <button id="btnUploadGallery" class="btn" type="button">อัปโหลดรูป</button>
         <span id="galleryStatus" class="muted"></span>
       </div>
-
       <div id="galleryGrid"></div>
     </section>
 
-    <!-- REVIEWS PANEL -->
     <section id="reviewsPanel" class="card hidden">
       <div class="row" style="justify-content:space-between">
-        <div>
-          <h3 style="margin:0">รีวิวทั้งหมด</h3>
-          <div class="muted" id="reviewsCount" style="margin-top:4px">0 รายการ</div>
-        </div>
-        <div class="row">
-          <input id="searchReviews" placeholder="ค้นหา: ชื่อ/ข้อความ" />
-          <button id="btnReloadReviews" class="btn btn-ghost" type="button">รีเฟรช</button>
-        </div>
+        <h3 style="margin:0">รีวิวทั้งหมด</h3>
+        <button id="btnReloadReviews" class="btn btn-ghost" type="button">รีเฟรช</button>
       </div>
-      <div style="height:12px"></div>
+      <div id="reviewsCount" class="muted" style="margin:10px 0">0 รายการ</div>
       <div id="reviewsGrid" class="review-grid"></div>
+    </section>
+
+    <section id="customersPanel" class="card hidden">
+      <div class="row" style="justify-content:space-between">
+        <h3 style="margin:0">ผู้ใช้</h3>
+        <input id="searchCustomer" placeholder="ค้นหา: ชื่อผู้ใช้" />
+      </div>
+      <div class="card" style="margin-top:10px"><table><thead><tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th></tr></thead><tbody id="customerRows"></tbody></table></div>
     </section>
   </div>
 </div>
-
 <div id="toast"></div>
 
 <script>
-  // ====== CONFIG ======
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnJ6dnFwbnZvZ2JpYnJ4aG5oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NjMzNTAsImV4cCI6MjA3MDAzOTM1MH0.HI92YCd9UF8Nzn0Lq-uWGF21Iz7zqwAHY6PBesQ4cu4';
 
   const GALLERY_CATEGORIES = [
-    { id: 'haircut_short',     label: 'ตัดผมหญิง - ผมสั้น' },
-    { id: 'haircut_long',      label: 'ตัดผมหญิง - ผมยาว' },
-    { id: 'haircutmen_short',  label: 'ตัดผมชาย - ผมสั้น' },
-    { id: 'haircutmen_long',   label: 'ตัดผมชาย - ผมยาว' },
-    { id: 'nail',              label: 'ทำเล็บ' },
-    { id: 'haircolor',         label: 'ทำสีผม' },
-    { id: 'makeup',            label: 'เมคอัพ' },
-    { id: 'spa',               label: 'สปา' },
-    { id: 'eyelash',           label: 'ต่อขนตา' },
+    { id: 'haircut_short', label: 'ตัดผมหญิง - ผมสั้น' },
+    { id: 'haircut_long', label: 'ตัดผมหญิง - ผมยาว' },
+    { id: 'haircutmen_short', label: 'ตัดผมชาย - ผมสั้น' },
+    { id: 'haircutmen_long', label: 'ตัดผมชาย - ผมยาว' },
+    { id: 'nail', label: 'ทำเล็บ' },
+    { id: 'haircolor', label: 'ทำสีผม' },
+    { id: 'makeup', label: 'เมคอัพ' },
+    { id: 'spa', label: 'สปา' },
+    { id: 'eyelash', label: 'ต่อขนตา' },
   ];
 
-  const PRICE_FALLBACK = {
-    'ตัดผมหญิง - ผมสั้น': 250,
-    'ตัดผมหญิง - ผมยาว':  300,
-    'ตัดผมชาย - ผมสั้น':  200,
-    'ตัดผมชาย - ผมยาว':   250,
-    'ทำเล็บ':              350,
-    'ทำสีผม':              900,
-    'เมคอัพ':              800,
-    'สปา':                 600,
-    'ต่อขนตา':             700,
-  };
-  const DEFAULT_DEPOSIT = 100;
-
-  const $ = (id)=>document.getElementById(id);
-  const sysBox = $('sysMsg');
-  const showSys = (msg)=>{ sysBox.textContent = msg; sysBox.classList.remove('hidden'); };
-  const hideSys = ()=>{ sysBox.classList.add('hidden'); };
-  const toast = (msg, ok=true)=>{
-    const el = $('toast');
-    el.textContent = msg;
-    el.style.background = ok ? 'rgba(17,17,17,.9)' : '#b91c1c';
-    el.classList.add('show');
-    setTimeout(()=>el.classList.remove('show'), 2000);
-  };
-
-  const money = (n)=>{
-    const v = Number(n||0);
-    return '฿' + v.toLocaleString('th-TH', { maximumFractionDigits: 2 });
-  };
-
-  const STATUS_LABELS = { booked:'จองแล้ว', in_service:'ผู้ใช้เข้าใช้บริการ', paid:'ผู้ใช้ชำระเงินแล้ว', cancelled:'ยกเลิก' };
-  const STATUS_CLASS  = { booked:'b-booked', in_service:'b-in_service', paid:'b-paid', cancelled:'b-cancelled' };
+  const $ = id => document.getElementById(id);
+  const toast = (msg, ok=true)=>{const el=$('toast');el.textContent=msg;el.style.background=ok?'rgba(17,17,17,.9)':'#b91c1c';el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2300)};
+  const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = n => '฿' + Number(n||0).toLocaleString('th-TH');
 
   let sb = null;
-  let filterUserId = null;
-
+  let staffsRaw = [];
   let galleryItems = [];
   let galleryCategoryId = GALLERY_CATEGORIES[0].id;
-
+  let bookingsRaw = [];
+  let customersRaw = [];
   let reviewsRaw = [];
-  let paymentsRaw = [];
-
-  // ===== Chats state (image) =====
-  let pendingChatImageFile = null;
 
   window.addEventListener('DOMContentLoaded', () => {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     bindEvents();
     initGalleryUI();
-    initMonthPicker();
     autoLoginIfSession();
   });
 
@@ -417,80 +190,41 @@
     $('btnLogin').addEventListener('click', onLogin);
     $('btnSignOut').addEventListener('click', onSignOut);
     $('tabBookings').addEventListener('click', ()=>setTab('bookings'));
-    $('tabPayments').addEventListener('click', ()=>setTab('payments'));
-    $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
-    $('tabChats').addEventListener('click', ()=>setTab('chats'));
+    $('tabStaffs').addEventListener('click', ()=>setTab('staffs'));
     $('tabGallery').addEventListener('click', ()=>setTab('gallery'));
     $('tabReviews').addEventListener('click', ()=>setTab('reviews'));
-
+    $('tabCustomers').addEventListener('click', ()=>setTab('customers'));
     $('btnReload').addEventListener('click', loadBookings30d);
-    $('btnClearFilter').addEventListener('click', ()=>{ filterUserId=null; renderBookings(); toast('ล้างตัวกรองผู้ใช้แล้ว'); });
-    $('searchBooking').addEventListener('input', renderBookings);
-    $('searchCustomer').addEventListener('input', renderCustomers);
-
-    // chat buttons
-    $('btnSend').addEventListener('click', sendChat);
-    $('btnPickImage').addEventListener('click', ()=>$('chatImage').click());
-    $('chatImage').addEventListener('change', onPickChatImage);
-
-    // payments
-    $('btnReloadPayments').addEventListener('click', loadPayments12m);
-    $('monthPick').addEventListener('change', renderPaymentsDashboard);
-
-    // gallery
-    $('galleryCategory').addEventListener('change', e => {
-      galleryCategoryId = e.target.value;
-      loadGallery();
-    });
+    $('btnSaveStaff').addEventListener('click', saveStaff);
+    $('btnReloadStaffs').addEventListener('click', loadStaffs);
+    $('btnCancelEditStaff').addEventListener('click', clearStaffForm);
+    $('galleryCategory').addEventListener('change', e=>{galleryCategoryId=e.target.value;loadGallery()});
     $('btnUploadGallery').addEventListener('click', uploadGalleryImages);
-
-    // reviews
     $('btnReloadReviews').addEventListener('click', loadReviews);
-    $('searchReviews').addEventListener('input', renderReviews);
-
-    // เปลี่ยนสถานะ booking
-    document.body.addEventListener('change', async (e)=>{
-      const el = e.target;
-      if (el && el.classList.contains('statusSel')) {
-        const bookingId = el.getAttribute('data-bid');
-        const newStatus = el.value;
-        el.disabled = true;
-        await onChangeStatus(bookingId, newStatus);
-        el.disabled = false;
-      }
-    });
-
-    // delete review
-    document.body.addEventListener('click', async (e)=>{
-      const el = e.target;
-      if (el && el.dataset && el.dataset.action === 'deleteReview') {
-        const rid = el.dataset.rid;
-        await deleteReview(rid);
-      }
-    });
+    $('searchCustomer').addEventListener('input', renderCustomers);
   }
 
   function setTab(which){
-    const tabs = ['bookings','payments','customers','chats','gallery','reviews'];
+    const tabs = ['bookings','staffs','gallery','reviews','customers'];
     for(const t of tabs){
       $('tab'+capitalize(t)).classList.toggle('active', t===which);
       $(t+'Panel').classList.toggle('hidden', t!==which);
     }
-    if (which==='chats') loadConversations();
-    if (which==='gallery') loadGallery();
-    if (which==='reviews') loadReviews();
-    if (which==='payments') loadPayments12m();
+    if(which==='bookings') loadBookings30d();
+    if(which==='staffs') loadStaffs();
+    if(which==='gallery') loadGallery();
+    if(which==='reviews') loadReviews();
+    if(which==='customers') loadCustomers();
   }
-  const capitalize = s=>s.charAt(0).toUpperCase()+s.slice(1);
+  const capitalize = s => s.charAt(0).toUpperCase()+s.slice(1);
 
   async function onLogin(){
-    hideSys();
     const email = $('email').value.trim();
-    const pass  = $('password').value;
-    if (!email || !pass) { $('loginMsg').textContent = 'กรอกอีเมล/รหัสผ่านก่อน'; return; }
-    $('loginMsg').textContent = 'กำลังเข้าสู่ระบบ...';
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) { $('loginMsg').textContent = 'เข้าสู่ระบบไม่สำเร็จ: ' + error.message; return; }
+    const password = $('password').value;
+    if(!email || !password){$('loginMsg').textContent='กรอกอีเมล/รหัสผ่านก่อน';return;}
+    $('loginMsg').textContent='กำลังเข้าสู่ระบบ...';
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){$('loginMsg').textContent='เข้าสู่ระบบไม่สำเร็จ: '+error.message;return;}
     await initApp();
   }
 
@@ -498,812 +232,210 @@
     await sb.auth.signOut();
     $('appSection').classList.add('hidden');
     $('loginSection').classList.remove('hidden');
-    $('loginMsg').textContent = 'ออกจากระบบแล้ว';
-    stopChatRealtime();
-  }
-
-  async function initApp(){
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user){ $('loginMsg').textContent='กรุณาเข้าสู่ระบบ'; return; }
-
-    const { data: profile, error } =
-      await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
-
-    if (error) { showSys('ดึงโปรไฟล์ไม่สำเร็จ: '+error.message); return; }
-    if (!profile || !profile.is_admin) {
-      $('loginMsg').textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)';
-      await sb.auth.signOut(); return;
-    }
-
-    $('adminName').textContent = 'สวัสดี, ' + (profile.username || 'admin');
-    $('btnSignOut').classList.remove('hidden');
-    $('loginSection').classList.add('hidden');
-    $('appSection').classList.remove('hidden');
-
-    setTab('bookings');
-    await Promise.all([loadBookings30d(), loadCustomers(), loadGallery()]);
+    $('btnSignOut').classList.add('hidden');
+    $('loginMsg').textContent='ออกจากระบบแล้ว';
   }
 
   async function autoLoginIfSession(){
     const { data:{session} } = await sb.auth.getSession();
-    if (session) initApp();
+    if(session) initApp();
+  }
+
+  async function initApp(){
+    const { data:{user} } = await sb.auth.getUser();
+    if(!user){$('loginMsg').textContent='กรุณาเข้าสู่ระบบ';return;}
+    const { data: profile, error } = await sb.from('profiles').select('username,is_admin').eq('id', user.id).maybeSingle();
+    if(error){$('loginMsg').textContent='ดึงโปรไฟล์ไม่สำเร็จ: '+error.message;return;}
+    if(!profile || !profile.is_admin){$('loginMsg').textContent='ไม่มีสิทธิ์เข้าใช้งาน';await sb.auth.signOut();return;}
+    $('adminName').textContent = 'สวัสดี, ' + (profile.username || 'admin');
+    $('btnSignOut').classList.remove('hidden');
+    $('loginSection').classList.add('hidden');
+    $('appSection').classList.remove('hidden');
+    setTab('bookings');
   }
 
   function getRange30d(){
     const from = new Date(); from.setHours(0,0,0,0);
     const to = new Date(from); to.setDate(to.getDate()+30);
-    $('rangeText').textContent = `ช่วงเวลา: ${from.toLocaleDateString('th-TH')} 00:00 - ${to.toLocaleDateString('th-TH')} 00:00`;
+    $('rangeText').textContent = `ช่วงเวลา: ${from.toLocaleDateString('th-TH')} - ${to.toLocaleDateString('th-TH')}`;
     return {from,to};
   }
 
-  let profilesMap = new Map(), bookingsRaw = [], customersRaw = [];
-
   async function loadBookings30d(){
-    const { from, to } = getRange30d();
-
-    let q = sb.from('bookings')
-      .select('id,user_id,start_at,end_at,status,slip_url,deposit_amount,total_amount,services(id,name,price),staff(display_name)')
-      .gte('start_at', from.toISOString())
-      .lt('start_at', to.toISOString())
-      .order('start_at', { ascending: true });
-
-    if (filterUserId) q = q.eq('user_id', filterUserId);
-
-    const { data: bookings, error } = await q;
-    if (error) { showSys('โหลดคิวไม่สำเร็จ: '+error.message); return; }
-    bookingsRaw = bookings || [];
-
-    const uids = [...new Set(bookingsRaw.map(b=>b.user_id))];
-    if(uids.length){
-      const { data: profs } = await sb.from('profiles').select('id,username,address').in('id', uids);
-      profilesMap = new Map((profs||[]).map(p=>[p.id,p]));
-    }else{
-      profilesMap = new Map();
-    }
-
-    renderBookings();
+    const {from,to}=getRange30d();
+    const {data,error}=await sb.from('bookings').select('id,start_at,status,services(name),staff(display_name),profiles:profiles(username)').gte('start_at',from.toISOString()).lt('start_at',to.toISOString()).order('start_at',{ascending:true});
+    if(error){$('bookingList').innerHTML='<div class="muted">โหลดคิวไม่สำเร็จ: '+escapeHtml(error.message)+'</div>';return;}
+    bookingsRaw=data||[];
+    $('bookingList').innerHTML = bookingsRaw.length ? bookingsRaw.map(b=>`
+      <div class="booking-card">
+        <div class="card-head"><strong>${new Date(b.start_at).toLocaleString('th-TH')}</strong><span class="pill">${escapeHtml(b.status)}</span></div>
+        <div class="kv"><div class="k">บริการ</div><div class="v">${escapeHtml(b.services?.name||'—')}</div></div>
+        <div class="kv"><div class="k">ช่าง</div><div class="v">${escapeHtml(b.staff?.display_name||'—')}</div></div>
+      </div>`).join('') : '<div class="muted">— ไม่มีคิว —</div>';
   }
 
-  const statusOptions = [
-    { value:'booked',     label: STATUS_LABELS.booked },
-    { value:'in_service', label: STATUS_LABELS.in_service },
-    { value:'paid',       label: STATUS_LABELS.paid },
-  ];
+  async function saveStaff(){
+    const id = $('editingStaffId').value;
+    const oldStoragePath = $('editingStaffStoragePath').value;
+    const name = $('staffName').value.trim();
+    const role = $('staffRole').value.trim();
+    const rating = Number($('staffRating').value || 5);
+    const description = $('staffDescription').value.trim();
+    const experience = $('staffExperience').value.trim();
+    const education = $('staffEducation').value.trim();
+    const isActive = $('staffIsActive').checked;
+    const file = $('staffImage').files[0];
+    if(!name || !role){toast('กรอกชื่อช่างและตำแหน่งก่อน',false);return;}
 
-  const fmtTime = iso => new Date(iso).toLocaleString('th-TH',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-  const badge = s => `<span class="badge ${STATUS_CLASS[s]||'b-booked'}">${STATUS_LABELS[s]||s}</span>`;
-
-  function calcAmountsForBooking(b){
-    const svcName = b.services?.name || '—';
-    const svcPriceDb = Number(b.services?.price || 0);
-    const svcPriceFallback = Number(PRICE_FALLBACK[svcName] || 0);
-    const total = Number(b.total_amount || 0) || svcPriceDb || svcPriceFallback || 0;
-    const deposit = Number(b.deposit_amount || 0) || (total>0 ? DEFAULT_DEPOSIT : 0);
-    const net = Math.max(0, total - deposit);
-    return { total, deposit, net, svcName };
-  }
-
-  function makeCard(b){
-    const prof = profilesMap.get(b.user_id) || {};
-    const name = prof.username || '—';
-    const addr = prof.address || '—';
-    const svc  = b.services?.name || '—';
-    const stf  = b.staff?.display_name || '—';
-
-    const amt = calcAmountsForBooking(b);
-
-    const sel = `
-      <select data-bid="${b.id}" class="statusSel">
-        ${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}
-      </select>
-    `;
-
-    const chatBtn = `<button class="btn btn-ghost" type="button" onclick="openChatTabAndWith('${b.user_id}','${(name||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>`;
-
-    const slipPart = b.slip_url
-      ? `<button class="btn btn-ghost" type="button" onclick="window.open('${b.slip_url}','_blank')">ดูสลิป</button>`
-      : `<span class="muted" style="font-size:12px">ไม่มีหลักฐานโอน</span>`;
-
-    const priceLine = (amt.total>0)
-      ? `<div class="kv"><div class="k">ราคา</div><div class="v">${money(amt.total)} <span class="muted small"> (มัดจำ ${money(amt.deposit)} / สุทธิ ${money(amt.net)})</span></div></div>`
-      : `<div class="kv"><div class="k">ราคา</div><div class="v muted">ยังไม่ตั้งราคา</div></div>`;
-
-    return `
-      <div class="booking-card" data-bid="${b.id}">
-        <div class="card-head">
-          <div class="card-time">${fmtTime(b.start_at)}</div>
-          <div class="badge-wrap">${badge(b.status)}</div>
-        </div>
-        <div class="card-body">
-          <div class="kv"><div class="k">ลูกค้า</div><div class="v">${name}</div></div>
-          <div class="kv"><div class="k">บริการ</div><div class="v">${svc}</div></div>
-          ${priceLine}
-          <div class="kv"><div class="k">ช่าง</div><div class="v">${stf}</div></div>
-          <div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${addr}</div></div>
-        </div>
-        <div class="card-foot">
-          <div class="row" style="gap:8px">
-            <div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>
-            ${sel}
-          </div>
-          <div class="row" style="gap:8px">
-            ${slipPart}
-            ${chatBtn}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderBookings(){
-    const q = ($('searchBooking').value||'').toLowerCase();
-
-    const filtered = (bookingsRaw||[]).filter(b=>{
-      const prof = profilesMap.get(b.user_id) || {};
-      const name = prof.username || '';
-      const addr = prof.address || '';
-      const svc  = b.services?.name || '';
-      const stf  = b.staff?.display_name || '';
-      const okSearch = [name, svc, stf, addr].some(x => (x||'').toLowerCase().includes(q));
-      const okFilter = filterUserId ? (b.user_id === filterUserId) : true;
-      return okSearch && okFilter;
-    });
-
-    const listBooked = filtered.filter(b => b.status === 'booked');
-    const listInSrv  = filtered.filter(b => b.status === 'in_service');
-    const listPaid   = filtered.filter(b => b.status === 'paid');
-
-    $('groupBooked').innerHTML    = listBooked.map(makeCard).join('') || `<div class="muted">— ว่าง —</div>`;
-    $('groupInService').innerHTML = listInSrv.map(makeCard).join('')  || `<div class="muted">— ว่าง —</div>`;
-    $('groupPaid').innerHTML      = listPaid.map(makeCard).join('')   || `<div class="muted">— ว่าง —</div>`;
-
-    $('countBooked').textContent    = `${listBooked.length} รายการ`;
-    $('countInService').textContent = `${listInSrv.length} รายการ`;
-    $('countPaid').textContent      = `${listPaid.length} รายการ`;
-  }
-
-  async function ensurePaymentRecorded(bookingId){
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
-
-    const { data: b, error: bErr } = await sb
-      .from('bookings')
-      .select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price)')
-      .eq('id', bookingId)
-      .maybeSingle();
-
-    if (bErr) throw bErr;
-    if (!b) throw new Error('ไม่พบ booking');
-
-    const amt = calcAmountsForBooking(b);
-
-    const payload = {
-      booking_id: b.id,
-      user_id: b.user_id,
-      service_id: b.services?.id || null,
-      service_name: amt.svcName || (b.services?.name || '—'),
-      total_amount: amt.total,
-      deposit_amount: amt.deposit,
-      net_amount: amt.net,
-      paid_at: new Date().toISOString(),
-    };
-
-    const { error: upErr } = await sb
-      .from('payments')
-      .upsert(payload, { onConflict: 'booking_id' });
-
-    if (upErr) throw upErr;
-  }
-
-  async function onChangeStatus(bookingId, newStatus){
-    try{
-      if (newStatus === 'paid'){
-        await ensurePaymentRecorded(bookingId);
-      }
-
-      const { error } = await sb.from('bookings').update({ status: newStatus }).eq('id', bookingId);
-      if(error){ toast('อัปเดตสถานะไม่สำเร็จ: '+error.message, false); return; }
-
-      bookingsRaw = bookingsRaw.map(b => b.id===bookingId ? ({...b, status:newStatus}) : b);
-      renderBookings();
-      toast('อัปเดตสถานะเรียบร้อย');
-
-      if (newStatus === 'paid') await loadPayments12m();
-    }catch(e){
-      toast('เกิดข้อผิดพลาด: '+(e?.message||e), false);
-      console.error(e);
-    }
-  }
-
-  async function loadCustomers(){
-    const { data: rows } = await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at', { ascending:false });
-    customersRaw = rows || []; renderCustomers();
-  }
-
-  function renderCustomers(){
-    const q = ($('searchCustomer').value||'').toLowerCase();
-    const rows = (customersRaw||[])
-      .filter(p => (p.username||'').toLowerCase().includes(q))
-      .map(p => `
-        <tr>
-          <td>${p.username||'—'}</td>
-          <td>${p.is_admin?'Admin':'User'}</td>
-          <td>${new Date(p.created_at).toLocaleDateString('th-TH')}</td>
-          <td>
-            <div class="row">
-              <button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button>
-              <button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${(p.username||'ผู้ใช้').replace(/'/g,'\\&#39;')}')">แชท</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    $('customerRows').innerHTML = rows || `<tr><td colspan="4" class="muted">— ไม่มีข้อมูล —</td></tr>`;
-  }
-
-  window.viewUserBookings = async (uid) => {
-    filterUserId = uid;
-    setTab('bookings');
-    await loadBookings30d();
-    toast('กรองการจองตามผู้ใช้แล้ว');
-  };
-
-  /* ======================= Payments/Sales ======================= */
-  function pad2(n){ return String(n).padStart(2,'0'); }
-  function monthKey(date){
-    const d = new Date(date);
-    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-  }
-  function monthLabel(key){
-    const [y,m] = key.split('-').map(Number);
-    const d = new Date(y, m-1, 1);
-    return d.toLocaleDateString('th-TH', { year:'numeric', month:'long' });
-  }
-
-  function initMonthPicker(){
-    const sel = $('monthPick');
-    const now = new Date();
-    const keys = [];
-    for(let i=0;i<12;i++){
-      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      keys.push(monthKey(d));
-    }
-    sel.innerHTML = keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join('');
-  }
-
-  async function loadPayments12m(){
-    const sel = $('monthPick');
-    if (!sel.value) initMonthPicker();
-
-    const oldestKey = sel.options[sel.options.length-1].value;
-    const [oy,om] = oldestKey.split('-').map(Number);
-    const start = new Date(oy, om-1, 1, 0,0,0,0);
-
-    $('salesRows').innerHTML = `<tr><td colspan="3" class="muted">กำลังโหลด...</td></tr>`;
-
-    const { data: rows, error } = await sb
-      .from('payments')
-      .select('id,booking_id,service_name,paid_at,total_amount,deposit_amount,net_amount')
-      .gte('paid_at', start.toISOString())
-      .order('paid_at', { ascending:false })
-      .limit(5000);
-
-    if (error){
-      $('salesRows').innerHTML = `<tr><td colspan="3" class="muted" style="color:#b91c1c">โหลด payments ไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
-      toast('โหลด payments ไม่สำเร็จ (เช็คว่ามีตาราง payments + RLS policy แล้ว)', false);
-      return;
-    }
-
-    paymentsRaw = rows || [];
-    $('paymentsCount').textContent = `${paymentsRaw.length} รายการ`;
-    renderPaymentsDashboard();
-  }
-
-  function renderPaymentsDashboard(){
-    const picked = $('monthPick').value;
-    const monthly = new Map();
-    const byServicePicked = new Map();
-
-    for(const p of (paymentsRaw||[])){
-      const key = monthKey(p.paid_at);
-      if (!monthly.has(key)) monthly.set(key, { count:0, net:0 });
-      const m = monthly.get(key);
-      m.count += 1;
-      m.net += Number(p.net_amount||0);
-
-      if (key === picked){
-        const svc = p.service_name || '—';
-        if (!byServicePicked.has(svc)) byServicePicked.set(svc, { count:0, net:0 });
-        const s = byServicePicked.get(svc);
-        s.count += 1;
-        s.net += Number(p.net_amount||0);
-      }
-    }
-
-    const sel = $('monthPick');
-    const keys = [...sel.options].map(o=>o.value);
-
-    const rowsHtml = keys.map(k=>{
-      const m = monthly.get(k) || {count:0, net:0};
-      const isPicked = (k===picked);
-      return `
-        <tr style="${isPicked?'outline:2px solid #00acc1; outline-offset:-2px':''}">
-          <td>${monthLabel(k)}</td>
-          <td>${m.count}</td>
-          <td><b>${money(m.net)}</b></td>
-        </tr>
-      `;
-    }).join('');
-
-    $('salesRows').innerHTML = rowsHtml || `<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>`;
-
-    const pickedAgg = monthly.get(picked) || {count:0, net:0};
-    $('kpiNet').textContent = money(pickedAgg.net);
-    $('kpiBills').textContent = String(pickedAgg.count);
-    $('kpiHint').textContent = pickedAgg.count ? `อิงจากการชำระเงินที่บันทึกไว้ใน ${monthLabel(picked)}` : `ยังไม่มีรายการชำระเงินใน ${monthLabel(picked)}`;
-
-    const top = [...byServicePicked.entries()]
-      .map(([name, v])=>({name, ...v}))
-      .sort((a,b)=> (b.count-a.count) || (b.net-a.net))
-      .slice(0, 12);
-
-    $('topSvcCount').textContent = `${top.length} รายการ`;
-
-    $('topServiceRows').innerHTML = top.length
-      ? top.map(x=>`
-          <tr>
-            <td>${escapeHtml(x.name)}</td>
-            <td>${x.count}</td>
-            <td><b>${money(x.net)}</b></td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="3" class="muted">— ยังไม่มีข้อมูล —</td></tr>`;
-  }
-
-  /* ======================= Reviews ======================= */
-  function stars(n){
-    const v = Math.max(0, Math.min(5, Number(n)||0));
-    return '★★★★★'.slice(0,v) + '☆☆☆☆☆'.slice(0,5-v);
-  }
-
-  const fmtReviewTime = iso => {
-    const d = new Date(iso);
-    return d.toLocaleString('th-TH', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-  };
-
-  async function loadReviews(){
-    $('reviewsGrid').innerHTML = `<div class="muted">กำลังโหลด...</div>`;
-    const { data: rows, error } = await sb
-      .from('reviews')
-      .select('id,username,comment,rating,created_at,review_images(public_url,storage_path,id)')
-      .order('created_at', { ascending:false })
-      .limit(200);
-
-    if (error) {
-      $('reviewsGrid').innerHTML = `<div class="muted" style="color:#b91c1c">โหลดรีวิวไม่สำเร็จ: ${error.message}</div>`;
-      return;
-    }
-    reviewsRaw = rows || [];
-    $('reviewsCount').textContent = `${reviewsRaw.length} รายการ`;
-    renderReviews();
-  }
-
-  function renderReviews(){
-    const q = ($('searchReviews').value||'').toLowerCase().trim();
-    const filtered = (reviewsRaw||[]).filter(r=>{
-      const name = (r.username||'').toLowerCase();
-      const com  = (r.comment||'').toLowerCase();
-      return !q || name.includes(q) || com.includes(q);
-    });
-
-    $('reviewsCount').textContent = `${filtered.length} รายการ`;
-
-    if (!filtered.length) {
-      $('reviewsGrid').innerHTML = `<div class="muted">— ไม่มีรีวิว —</div>`;
-      return;
-    }
-
-    $('reviewsGrid').innerHTML = filtered.map(r=>{
-      const imgs = Array.isArray(r.review_images) ? r.review_images : [];
-      const imgHtml = imgs.slice(0,6).map(x=>`<img src="${x.public_url}" alt="">`).join('');
-      return `
-        <div class="review-card">
-          <div class="review-head">
-            <div>
-              <div class="review-name">${escapeHtml(r.username||'ผู้ใช้')}</div>
-              <div class="review-meta">${fmtReviewTime(r.created_at)} • id: ${escapeHtml(r.id)}</div>
-            </div>
-            <button class="btn btn-danger" data-action="deleteReview" data-rid="${escapeHtml(r.id)}" type="button">ลบ</button>
-          </div>
-
-          <div class="stars">${stars(r.rating)}</div>
-          <div class="review-comment">${escapeHtml(r.comment||'')}</div>
-
-          ${imgs.length ? `<div class="review-imgs">${imgHtml}</div>` : `<div class="muted" style="font-size:12px">ไม่มีรูปแนบ</div>`}
-        </div>
-      `;
-    }).join('');
-  }
-
-  async function deleteReview(reviewId){
-    if (!confirm('ยืนยันลบรีวิวนี้?')) return;
+    let imageUrl = null;
+    let storagePath = oldStoragePath || null;
 
     try{
-      const { data: imgs, error: imgSelErr } = await sb
-        .from('review_images')
-        .select('id,storage_path')
-        .eq('review_id', reviewId);
-
-      if (imgSelErr) throw imgSelErr;
-
-      if (imgs && imgs.length){
-        const paths = imgs.map(x=>x.storage_path).filter(Boolean);
-        if (paths.length){
-          const { error: rmErr } = await sb.storage.from('reviews').remove(paths);
-          if (rmErr) console.warn('ลบไฟล์ storage ไม่สำเร็จ:', rmErr.message);
-        }
-
-        const { data: imgDeleted, error: imgDelErr } = await sb
-          .from('review_images')
-          .delete()
-          .eq('review_id', reviewId)
-          .select('id');
-
-        if (imgDelErr) throw imgDelErr;
-        if (Array.isArray(imgDeleted) && imgDeleted.length === 0 && imgs.length > 0) {
-          toast('ลบรูปไม่สำเร็จ (สิทธิ์ไม่พอ/RLS บล็อก)', false);
-          return;
-        }
+      if(file){
+        const ext = (file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g,'');
+        storagePath = `profiles/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const {error: upErr} = await sb.storage.from('staff').upload(storagePath,file,{contentType:file.type||'image/jpeg',upsert:false});
+        if(upErr) throw upErr;
+        const {data:urlData}=sb.storage.from('staff').getPublicUrl(storagePath);
+        imageUrl = urlData.publicUrl;
+        if(id && oldStoragePath) await sb.storage.from('staff').remove([oldStoragePath]);
       }
 
-      const { data: revDeleted, error: revDelErr } = await sb
-        .from('reviews')
-        .delete()
-        .eq('id', reviewId)
-        .select('id');
+      const payload = {display_name:name,role,rating,description,experience,education,is_active:isActive,storage_path:storagePath};
+      if(imageUrl) payload.image_url = imageUrl;
 
-      if (revDelErr) throw revDelErr;
-
-      if (!Array.isArray(revDeleted) || revDeleted.length === 0) {
-        toast('ลบไม่สำเร็จ: ไม่พบแถวที่จะลบ หรือ RLS ไม่อนุญาต', false);
-        return;
-      }
-
-      toast('ลบรีวิวเรียบร้อย ✅');
-      await loadReviews();
-
-    }catch(e){
-      toast('ลบรีวิวไม่สำเร็จ: ' + (e?.message || e), false);
-      console.error(e);
-    }
+      let res;
+      if(id){res = await sb.from('staff').update(payload).eq('id',id);}
+      else{res = await sb.from('staff').insert(payload);}
+      if(res.error) throw res.error;
+      toast(id?'แก้ไขช่างเรียบร้อย':'เพิ่มช่างเรียบร้อย');
+      clearStaffForm();
+      await loadStaffs();
+    }catch(e){toast('บันทึกช่างไม่สำเร็จ: '+(e?.message||e),false);console.error(e)}
   }
 
-  /* ======================= Gallery ======================= */
+  async function loadStaffs(){
+    const {data,error}=await sb.from('staff').select('*').order('created_at',{ascending:false});
+    if(error){$('staffGrid').innerHTML='<div class="muted">โหลดข้อมูลช่างไม่สำเร็จ: '+escapeHtml(error.message)+'</div>';return;}
+    staffsRaw=data||[];
+    renderStaffs();
+  }
+
+  function renderStaffs(){
+    const box=$('staffGrid');
+    if(!staffsRaw.length){box.innerHTML='<div class="muted">— ยังไม่มีข้อมูลช่าง —</div>';return;}
+    box.innerHTML=staffsRaw.map(s=>`
+      <div class="staff-card">
+        <div class="card-head"><strong>${escapeHtml(s.display_name||'—')}</strong><span class="pill">${s.is_active?'แสดงในแอป':'ซ่อน'}</span></div>
+        ${s.image_url?`<img class="staff-img" src="${s.image_url}" alt="">`:`<div class="staff-placeholder">👤</div>`}
+        <div class="kv"><div class="k">ตำแหน่ง</div><div class="v">${escapeHtml(s.role||'—')}</div></div>
+        <div class="kv"><div class="k">คะแนน</div><div class="v">${escapeHtml(s.rating||5)}</div></div>
+        <div class="kv"><div class="k">รายละเอียด</div><div class="v">${escapeHtml(s.description||'—')}</div></div>
+        <div class="kv"><div class="k">ประสบการณ์</div><div class="v">${escapeHtml(s.experience||'—')}</div></div>
+        <div class="kv"><div class="k">การศึกษา</div><div class="v">${escapeHtml(s.education||'—')}</div></div>
+        <div class="row">
+          <button class="btn btn-ghost" type="button" onclick="editStaff('${s.id}')">แก้ไข</button>
+          <button class="btn btn-danger" type="button" onclick="deleteStaff('${s.id}','${s.storage_path||''}')">ลบ</button>
+        </div>
+      </div>`).join('');
+  }
+
+  window.editStaff = function(id){
+    const s = staffsRaw.find(x=>String(x.id)===String(id));
+    if(!s) return;
+    $('editingStaffId').value=s.id;
+    $('editingStaffStoragePath').value=s.storage_path||'';
+    $('staffName').value=s.display_name||'';
+    $('staffRole').value=s.role||'';
+    $('staffRating').value=s.rating||5;
+    $('staffDescription').value=s.description||'';
+    $('staffExperience').value=s.experience||'';
+    $('staffEducation').value=s.education||'';
+    $('staffIsActive').checked=!!s.is_active;
+    $('staffImage').value='';
+    $('btnSaveStaff').textContent='บันทึกการแก้ไข';
+    $('btnCancelEditStaff').classList.remove('hidden');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function clearStaffForm(){
+    $('editingStaffId').value=''; $('editingStaffStoragePath').value='';
+    $('staffName').value=''; $('staffRole').value=''; $('staffRating').value='';
+    $('staffDescription').value=''; $('staffExperience').value=''; $('staffEducation').value='';
+    $('staffImage').value=''; $('staffIsActive').checked=true;
+    $('btnSaveStaff').textContent='บันทึกช่าง';
+    $('btnCancelEditStaff').classList.add('hidden');
+  }
+
+  window.deleteStaff = async function(id,storagePath){
+    if(!confirm('ยืนยันลบช่างคนนี้?')) return;
+    try{
+      if(storagePath) await sb.storage.from('staff').remove([storagePath]);
+      const {error}=await sb.from('staff').delete().eq('id',id);
+      if(error) throw error;
+      toast('ลบช่างเรียบร้อย');
+      await loadStaffs();
+    }catch(e){toast('ลบช่างไม่สำเร็จ: '+(e?.message||e),false)}
+  }
+
   function initGalleryUI(){
-    const sel = $('galleryCategory');
-    sel.innerHTML = GALLERY_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
-    galleryCategoryId = sel.value;
+    $('galleryCategory').innerHTML = GALLERY_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+    galleryCategoryId = $('galleryCategory').value;
   }
 
   async function loadGallery(){
-    $('galleryStatus').textContent = 'กำลังโหลด...';
-    const { data, error } = await sb
-      .from('gallery_images')
-      .select('id,category,public_url,storage_path,created_at')
-      .eq('category', galleryCategoryId)
-      .order('created_at', { ascending:false });
-
-    if (error) {
-      $('galleryStatus').textContent = 'โหลดรูปไม่สำเร็จ';
-      toast('โหลดรูปไม่สำเร็จ: '+error.message, false);
-      return;
-    }
-    galleryItems = data || [];
-    $('galleryStatus').textContent = `${galleryItems.length} รูปในหมวดนี้`;
-    renderGallery();
-  }
-
-  function renderGallery(){
-    const box = $('galleryGrid');
-    if (!galleryItems.length){
-      box.innerHTML = '<div class="muted">— ยังไม่มีรูปในหมวดนี้ —</div>';
-      return;
-    }
-    box.innerHTML = galleryItems.map(img=>{
-      const sp = img.storage_path || '';
-      return `
-        <div class="g-item">
-          <img src="${img.public_url}" alt="">
-          <button class="btn btn-ghost" type="button"
-            onclick="deleteGalleryImage('${img.id}','${sp}')">ลบ</button>
-        </div>
-      `;
-    }).join('');
+    $('galleryStatus').textContent='กำลังโหลด...';
+    const {data,error}=await sb.from('gallery_images').select('id,category,public_url,storage_path,created_at').eq('category',galleryCategoryId).order('created_at',{ascending:false});
+    if(error){$('galleryStatus').textContent='โหลดรูปไม่สำเร็จ';toast('โหลดรูปไม่สำเร็จ: '+error.message,false);return;}
+    galleryItems=data||[];
+    $('galleryStatus').textContent=`${galleryItems.length} รูปในหมวดนี้`;
+    $('galleryGrid').innerHTML=galleryItems.length?galleryItems.map(img=>`
+      <div class="g-item"><img src="${img.public_url}" alt=""><button class="btn btn-ghost" type="button" onclick="deleteGalleryImage('${img.id}','${img.storage_path||''}')">ลบ</button></div>`).join(''):'<div class="muted">— ยังไม่มีรูปในหมวดนี้ —</div>';
   }
 
   async function uploadGalleryImages(){
-    const input = $('galleryFile');
-    const files = input.files;
-    if (!files || !files.length){
-      toast('เลือกไฟล์ก่อน', false); return;
+    const files=$('galleryFile').files;
+    if(!files||!files.length){toast('เลือกไฟล์ก่อน',false);return;}
+    for(const file of files){
+      const path=`${galleryCategoryId}/${Date.now()}_${file.name}`;
+      const {error:upErr}=await sb.storage.from('gallery').upload(path,file);
+      if(upErr){toast('อัปโหลดรูปไม่สำเร็จ: '+upErr.message,false);continue;}
+      const {data:urlData}=sb.storage.from('gallery').getPublicUrl(path);
+      const {error:dbErr}=await sb.from('gallery_images').insert({category:galleryCategoryId,storage_path:path,public_url:urlData.publicUrl});
+      if(dbErr) toast('บันทึกข้อมูลรูปไม่สำเร็จ: '+dbErr.message,false);
     }
-    const bucket = 'gallery';
-    $('galleryStatus').textContent = 'กำลังอัปโหลด...';
-
-    for (const file of files){
-      const path = `${galleryCategoryId}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await sb.storage.from(bucket).upload(path, file);
-      if (upErr){
-        toast('อัปโหลดรูปไม่สำเร็จ: '+upErr.message, false);
-        continue;
-      }
-      const { data: urlData } = sb.storage.from(bucket).getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
-
-      const { error: dbErr } = await sb.from('gallery_images').insert({
-        category: galleryCategoryId,
-        storage_path: path,
-        public_url: publicUrl,
-      });
-      if (dbErr){
-        toast('บันทึกข้อมูลรูปไม่สำเร็จ: '+dbErr.message, false);
-      }
-    }
-
-    input.value = '';
-    toast('อัปโหลดรูปเสร็จแล้ว');
-    await loadGallery();
+    $('galleryFile').value=''; toast('อัปโหลดรูปเสร็จแล้ว'); await loadGallery();
   }
 
-  window.deleteGalleryImage = async (id, storagePath)=>{
-    if (!confirm('ยืนยันลบรูปนี้?')) return;
-    const bucket = 'gallery';
-
-    const { error: sErr } = await sb.storage.from(bucket).remove([storagePath]);
-    if (sErr){
-      toast('ลบรูปจาก Storage ไม่สำเร็จ: '+sErr.message, false);
-      return;
-    }
-    const { error: dErr } = await sb.from('gallery_images').delete().eq('id', id);
-    if (dErr){
-      toast('ลบข้อมูลจากฐานข้อมูลไม่สำเร็จ: '+dErr.message, false);
-      return;
-    }
-    toast('ลบรูปเรียบร้อย');
-    await loadGallery();
-  };
-
-  /* ======================= Chats (ส่งรูป + กัน content not null) ======================= */
-  let chatPeerId = null;
-  let chatPeerName = 'ผู้ใช้';
-  let chatSubscription = null;
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  }
-  function computeChatId(a, b){ const ids=[a,b].sort(); return ids[0]+'_'+ids[1]; }
-  function stopChatRealtime(){ if (chatSubscription){ chatSubscription.unsubscribe(); chatSubscription=null; } }
-
-  function openChatTabAndWith(uid, name){
-    setTab('chats');
-    openChatWith(uid, name);
+  window.deleteGalleryImage = async function(id,storagePath){
+    if(!confirm('ยืนยันลบรูปนี้?')) return;
+    if(storagePath) await sb.storage.from('gallery').remove([storagePath]);
+    const {error}=await sb.from('gallery_images').delete().eq('id',id);
+    if(error){toast('ลบข้อมูลไม่สำเร็จ: '+error.message,false);return;}
+    toast('ลบรูปเรียบร้อย'); await loadGallery();
   }
 
-  function onPickChatImage(e){
-    const f = e.target.files && e.target.files[0];
-    pendingChatImageFile = f || null;
-
-    const hint = $('chatImageHint');
-    if (pendingChatImageFile){
-      hint.style.display = 'block';
-      hint.textContent = `เลือกรูปแล้ว: ${pendingChatImageFile.name} (กดส่งเพื่ออัปโหลด)`;
-    }else{
-      hint.style.display = 'none';
-      hint.textContent = '';
-    }
+  async function loadReviews(){
+    $('reviewsGrid').innerHTML='<div class="muted">กำลังโหลด...</div>';
+    const {data,error}=await sb.from('reviews').select('id,username,comment,rating,created_at,review_images(public_url,storage_path,id)').order('created_at',{ascending:false}).limit(200);
+    if(error){$('reviewsGrid').innerHTML='<div class="muted">โหลดรีวิวไม่สำเร็จ: '+escapeHtml(error.message)+'</div>';return;}
+    reviewsRaw=data||[];
+    $('reviewsCount').textContent=`${reviewsRaw.length} รายการ`;
+    $('reviewsGrid').innerHTML=reviewsRaw.length?reviewsRaw.map(r=>{
+      const imgs=Array.isArray(r.review_images)?r.review_images:[];
+      return `<div class="review-card"><div class="card-head"><strong>${escapeHtml(r.username||'ผู้ใช้')}</strong><span>${'★'.repeat(Number(r.rating||0))}</span></div><div>${escapeHtml(r.comment||'')}</div>${imgs.length?`<div class="review-imgs">${imgs.map(x=>`<img src="${x.public_url}" alt="">`).join('')}</div>`:''}</div>`;
+    }).join(''):'<div class="muted">— ไม่มีรีวิว —</div>';
   }
 
-  async function loadConversations(){
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
-
-    const since = new Date(); since.setDate(since.getDate()-90);
-
-    const { data: rows, error } = await sb
-      .from('messages')
-      .select('chat_id,sender_id,receiver_id,content,image_url,created_at')
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .gte('created_at', since.toISOString())
-      .order('created_at', { ascending:false });
-
-    if (error){
-      $('chatListItems').innerHTML = '<div class="muted" style="padding:12px">โหลดห้องไม่สำเร็จ</div>';
-      return;
-    }
-
-    const byPeer = new Map();
-    for(const m of (rows||[])){
-      const peer = (m.sender_id===user.id) ? m.receiver_id : m.sender_id;
-      if (!byPeer.has(peer)) byPeer.set(peer, m);
-    }
-
-    const peers = [...byPeer.keys()];
-    let nameMap = new Map();
-    if (peers.length){
-      const { data: profs } = await sb.from('profiles').select('id,username').in('id', peers);
-      nameMap = new Map((profs||[]).map(p=>[p.id, p.username||'ผู้ใช้']));
-    }
-
-    const items = peers.map(pid=>{
-      const m = byPeer.get(pid);
-      const name = nameMap.get(pid) || 'ผู้ใช้';
-      const time = new Date(m.created_at).toLocaleString('th-TH',{ month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-      const snippet = (m.image_url ? '[รูปภาพ]' : (m.content||'')).toString();
-      const selected = (pid===chatPeerId) ? ' selected' : '';
-      return `
-        <div class="cl-item${selected}" onclick="openChatWith('${pid}','${(name).replace(/'/g,'\\&#39;')}')">
-          <div>
-            <div class="cl-name">${escapeHtml(name)}</div>
-            <div class="cl-snippet">${escapeHtml(snippet)}</div>
-          </div>
-          <div class="cl-time">${time}</div>
-        </div>
-      `;
-    }).join('');
-
-    $('chatListItems').innerHTML = items || '<div class="muted" style="padding:12px">— ยังไม่มีการสนทนา —</div>';
+  async function loadCustomers(){
+    const {data,error}=await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at',{ascending:false});
+    if(error){$('customerRows').innerHTML=`<tr><td colspan="3">โหลดผู้ใช้ไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;return;}
+    customersRaw=data||[]; renderCustomers();
   }
-
-  async function openChatWith(peerId, peerName='ผู้ใช้'){
-    try{
-      const { data:{ user } } = await sb.auth.getUser();
-      if(!user){ toast('กรุณาเข้าสู่ระบบใหม่', false); return; }
-
-      chatPeerId = peerId; chatPeerName = peerName;
-      $('chatTitle').textContent = `แชทกับ: ${peerName}`;
-      $('chatHeaderRight').textContent = '';
-
-      document.querySelectorAll('.cl-item').forEach(el=>el.classList.remove('selected'));
-      const idx = [...document.querySelectorAll('.cl-item')].find(el => el.getAttribute('onclick')?.includes(peerId));
-      if (idx) idx.classList.add('selected');
-
-      stopChatRealtime();
-      const chatId = computeChatId(user.id, peerId);
-
-      const { data: rows, error } = await sb
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('created_at', { ascending: true });
-
-      if (error) { $('chatMessages').innerHTML = '<div class="muted" style="padding:12px">โหลดข้อความไม่สำเร็จ</div>'; return; }
-      renderChatRows(rows || [], user.id);
-
-      chatSubscription = sb
-        .channel('realtime:messages:'+chatId)
-        .on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-          payload => appendChatRow(payload.new, user.id)
-        ).subscribe();
-
-    }catch(e){
-      console.error(e);
-      toast('เปิดห้องแชทไม่สำเร็จ', false);
-    }
-  }
-
-  function renderChatRows(rows, myId){
-    const box = $('chatMessages');
-    if(!rows.length){ box.innerHTML = '<div class="muted" style="padding:12px">— ยังไม่มีข้อความ —</div>'; return; }
-
-    box.innerHTML = rows.map(m=>{
-      const mine = m.sender_id === myId;
-      const text = (m.content||'');
-      const img  = (m.image_url||'');
-      const hasImg = !!img;
-
-      return `
-        <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
-          <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
-            ${hasImg ? `<img class="chat-img" src="${img}" onclick="window.open('${img}','_blank')" alt="">` : ``}
-            ${hasImg && text ? `<div style="height:6px"></div>` : ``}
-            ${text ? escapeHtml(text) : ``}
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    box.scrollTop = box.scrollHeight;
-  }
-
-  function appendChatRow(m, myId){
-    const box = $('chatMessages');
-    if (box.innerHTML.includes('ยังไม่มีข้อความ')) box.innerHTML = '';
-    const mine = m.sender_id === myId;
-
-    const text = (m.content||'');
-    const img  = (m.image_url||'');
-    const hasImg = !!img;
-
-    const html = `
-      <div style="display:flex; ${mine?'justify-content:flex-end':'justify-content:flex-start'}; margin:6px 0;">
-        <div style="max-width:78%; padding:8px 12px; border-radius:12px; background:${mine?'#00acc1':'#e5e7eb'}; color:${mine?'#fff':'#111'}; white-space:pre-wrap; word-break:break-word;">
-          ${hasImg ? `<img class="chat-img" src="${img}" onclick="window.open('${img}','_blank')" alt="">` : ``}
-          ${hasImg && text ? `<div style="height:6px"></div>` : ``}
-          ${text ? escapeHtml(text) : ``}
-        </div>
-      </div>`;
-    box.insertAdjacentHTML('beforeend', html);
-    box.scrollTop = box.scrollHeight;
-    loadConversations();
-  }
-
-  async function uploadChatImageAndGetUrl(chatId, file){
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user) throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
-
-    // ปลอดภัยกับชื่อไฟล์
-    const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'jpg';
-    const safeExt = String(ext || 'jpg').replace(/[^a-zA-Z0-9]/g,'').slice(0,10) || 'jpg';
-
-    // ⚠️ bucket ต้องมีชื่อ "chat"
-    const path = `${chatId}/${Date.now()}_${user.id}.${safeExt}`;
-
-    const { error: upErr } = await sb.storage.from('chat').upload(path, file, {
-      contentType: file.type || 'image/jpeg',
-      upsert: false
-    });
-    if (upErr) throw upErr;
-
-    const { data: urlData } = sb.storage.from('chat').getPublicUrl(path);
-    return { publicUrl: urlData.publicUrl, path };
-  }
-
-  async function sendChat(){
-    const txt = ($('chatInput').value||'').trim();
-    const imgFile = pendingChatImageFile;
-
-    if(!txt && !imgFile) return;
-
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user || !chatPeerId){ toast('ยังไม่มีห้องแชท', false); return; }
-
-    const chatId = computeChatId(user.id, chatPeerId);
-
-    $('btnSend').disabled = true;
-
-    try{
-      let imageUrl = null;
-
-      if (imgFile){
-        const uploaded = await uploadChatImageAndGetUrl(chatId, imgFile);
-        imageUrl = uploaded.publicUrl;
-      }
-
-      // clear ui
-      $('chatInput').value = '';
-      pendingChatImageFile = null;
-      $('chatImage').value = '';
-      $('chatImageHint').style.display = 'none';
-      $('chatImageHint').textContent = '';
-
-      // ✅ สำคัญ: content ห้ามเป็น null (กัน not null constraint)
-      const payload = {
-        chat_id: chatId,
-        sender_id: user.id,
-        receiver_id: chatPeerId,
-        content: txt || '',  // <-- FIX หลัก
-        msg_type: (imageUrl ? (txt ? 'mixed' : 'image') : 'text'),
-        image_url: imageUrl
-      };
-
-      const { error } = await sb.from('messages').insert(payload);
-      if (error) toast('ส่งไม่สำเร็จ: '+error.message, false);
-    }catch(e){
-      console.error(e);
-      toast('ส่งรูป/ข้อความไม่สำเร็จ: '+(e?.message||e), false);
-    }finally{
-      $('btnSend').disabled = false;
-    }
+  function renderCustomers(){
+    const q=($('searchCustomer').value||'').toLowerCase();
+    const rows=customersRaw.filter(p=>(p.username||'').toLowerCase().includes(q)).map(p=>`<tr><td>${escapeHtml(p.username||'—')}</td><td>${p.is_admin?'Admin':'User'}</td><td>${p.created_at?new Date(p.created_at).toLocaleDateString('th-TH'):'—'}</td></tr>`).join('');
+    $('customerRows').innerHTML=rows||'<tr><td colspan="3" class="muted">— ไม่มีข้อมูล —</td></tr>';
   }
 </script>
 </body>

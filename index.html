@@ -49,6 +49,14 @@
     #sysMsg{margin:10px 0;color:#b91c1c;font-size:13px}
     #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:0;transition:opacity .25s;z-index:9999}
     #toast.show{opacity:1}
+    .notif-btn{position:relative;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:10px 12px;font-weight:800;cursor:pointer;background:#ffffff;color:#111}
+    .notif-badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#ef4444;color:#fff;font-size:12px;display:none;align-items:center;justify-content:center;font-weight:900}
+    .notif-badge.show{display:flex}
+    #bookingAlertsPanel{position:fixed;right:16px;top:74px;width:min(360px,calc(100vw - 32px));max-height:420px;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.18);padding:12px;z-index:9998;border:1px solid #e5e7eb}
+    .alert-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .alert-item{border:1px solid #eef2f7;border-radius:12px;padding:10px;margin-bottom:8px;background:#fbfdff}
+    .alert-title{font-weight:900;margin-bottom:4px}.alert-meta{font-size:12px;color:#6b7280;line-height:1.45}
+
     #chatsLayout{display:grid;grid-template-columns:280px 1fr;gap:14px;min-height:540px}
     @media (max-width:760px){#chatsLayout{grid-template-columns:1fr}}
     #chatList{background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);overflow:auto}
@@ -80,7 +88,11 @@
 <body>
 <header>
   <div class="row"><strong>Admin Dashboard</strong><span id="adminName" class="muted"></span></div>
-  <div class="row"><button id="btnSignOut" class="btn btn-ghost hidden" type="button">ออกจากระบบ</button></div>
+  <div class="row">
+    <button id="btnEnableBookingNotifications" class="btn btn-ghost hidden" type="button">เปิดแจ้งเตือน</button>
+    <button id="btnBookingAlerts" class="notif-btn hidden" type="button">🔔 การจองใหม่ <span id="bookingAlertBadge" class="notif-badge">0</span></button>
+    <button id="btnSignOut" class="btn btn-ghost hidden" type="button">ออกจากระบบ</button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -160,6 +172,13 @@
   </div>
 </div>
 <div id="toast"></div>
+<div id="bookingAlertsPanel" class="hidden">
+  <div class="alert-head">
+    <strong>การแจ้งเตือนการจอง</strong>
+    <button id="btnClearBookingAlerts" class="btn btn-ghost" type="button">ล้าง</button>
+  </div>
+  <div id="bookingAlertsList" class="muted">ยังไม่มีการจองใหม่</div>
+</div>
 
 <script>
   const SUPABASE_URL = 'https://cnvrzvqpnvogbibrxhnh.supabase.co';
@@ -180,10 +199,12 @@
   let sb=null, filterUserId=null, galleryItems=[], galleryCategoryId=GALLERY_CATEGORIES[0].id, reviewsRaw=[], paymentsRaw=[], staffsRaw=[], promotionsRaw=[], pendingChatImageFile=null;
   let profilesMap=new Map(), bookingsRaw=[], customersRaw=[];
   let chatPeerId=null, chatPeerName='ผู้ใช้', chatSubscription=null;
+  let bookingSubscription=null, bookingAlertCount=0, bookingAlerts=[];
 
   window.addEventListener('DOMContentLoaded',()=>{ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY); bindEvents(); initGalleryUI(); initMonthPicker(); autoLoginIfSession(); });
   function bindEvents(){
     $('btnLogin').addEventListener('click',onLogin); $('btnSignOut').addEventListener('click',onSignOut);
+    $('btnBookingAlerts').addEventListener('click',toggleBookingAlertsPanel); $('btnClearBookingAlerts').addEventListener('click',clearBookingAlerts); $('btnEnableBookingNotifications').addEventListener('click',requestBookingNotificationPermission);
     $('tabBookings').addEventListener('click',()=>setTab('bookings')); $('tabPayments').addEventListener('click',()=>setTab('payments')); $('tabPromotions').addEventListener('click',()=>setTab('promotions')); $('tabCustomers').addEventListener('click',()=>setTab('customers')); $('tabChats').addEventListener('click',()=>setTab('chats')); $('tabGallery').addEventListener('click',()=>setTab('gallery')); $('tabReviews').addEventListener('click',()=>setTab('reviews')); $('tabStaffs').addEventListener('click',()=>setTab('staffs'));
     $('btnReload').addEventListener('click',loadBookings30d); $('btnClearFilter').addEventListener('click',()=>{filterUserId=null;renderBookings();toast('ล้างตัวกรองผู้ใช้แล้ว')}); $('searchBooking').addEventListener('input',renderBookings); $('searchCustomer').addEventListener('input',renderCustomers);
     $('btnSend').addEventListener('click',sendChat); $('btnPickImage').addEventListener('click',()=>$('chatImage').click()); $('chatImage').addEventListener('change',onPickChatImage);
@@ -199,10 +220,104 @@
   const capitalize=s=>s.charAt(0).toUpperCase()+s.slice(1);
   function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   async function onLogin(){ hideSys(); const email=$('email').value.trim(), pass=$('password').value; if(!email||!pass){$('loginMsg').textContent='กรอกอีเมล/รหัสผ่านก่อน';return;} $('loginMsg').textContent='กำลังเข้าสู่ระบบ...'; const {error}=await sb.auth.signInWithPassword({email,password:pass}); if(error){$('loginMsg').textContent='เข้าสู่ระบบไม่สำเร็จ: '+error.message;return;} await initApp(); }
-  async function onSignOut(){ await sb.auth.signOut(); $('appSection').classList.add('hidden'); $('loginSection').classList.remove('hidden'); $('loginMsg').textContent='ออกจากระบบแล้ว'; stopChatRealtime(); }
-  async function initApp(){ const {data:{user}}=await sb.auth.getUser(); if(!user){$('loginMsg').textContent='กรุณาเข้าสู่ระบบ';return;} const {data:profile,error}=await sb.from('profiles').select('username,is_admin').eq('id',user.id).maybeSingle(); if(error){showSys('ดึงโปรไฟล์ไม่สำเร็จ: '+error.message);return;} if(!profile||!profile.is_admin){$('loginMsg').textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)'; await sb.auth.signOut(); return;} $('adminName').textContent='สวัสดี, '+(profile.username||'admin'); $('btnSignOut').classList.remove('hidden'); $('loginSection').classList.add('hidden'); $('appSection').classList.remove('hidden'); setTab('bookings'); await Promise.all([loadBookings30d(),loadCustomers(),loadGallery(),loadStaffs(),loadPromotions()]); }
+  async function onSignOut(){ await sb.auth.signOut(); $('appSection').classList.add('hidden'); $('loginSection').classList.remove('hidden'); $('loginMsg').textContent='ออกจากระบบแล้ว'; stopChatRealtime(); stopBookingRealtime(); }
+  async function initApp(){ const {data:{user}}=await sb.auth.getUser(); if(!user){$('loginMsg').textContent='กรุณาเข้าสู่ระบบ';return;} const {data:profile,error}=await sb.from('profiles').select('username,is_admin').eq('id',user.id).maybeSingle(); if(error){showSys('ดึงโปรไฟล์ไม่สำเร็จ: '+error.message);return;} if(!profile||!profile.is_admin){$('loginMsg').textContent='ไม่มีสิทธิ์เข้าใช้งาน (ต้องเป็นแอดมิน)'; await sb.auth.signOut(); return;} $('adminName').textContent='สวัสดี, '+(profile.username||'admin'); $('btnSignOut').classList.remove('hidden'); $('btnBookingAlerts').classList.remove('hidden'); $('btnEnableBookingNotifications').classList.remove('hidden'); $('loginSection').classList.add('hidden'); $('appSection').classList.remove('hidden'); startBookingRealtime(); updateNotificationPermissionButton(); setTab('bookings'); await Promise.all([loadBookings30d(),loadCustomers(),loadGallery(),loadStaffs(),loadPromotions()]); }
   async function autoLoginIfSession(){ const {data:{session}}=await sb.auth.getSession(); if(session) initApp(); }
 
+
+  function stopBookingRealtime(){ if(bookingSubscription){ bookingSubscription.unsubscribe(); bookingSubscription=null; } }
+  function startBookingRealtime(){
+    stopBookingRealtime();
+    bookingSubscription = sb
+      .channel('admin-booking-insert-alerts')
+      .on('postgres_changes', { event:'INSERT', schema:'public', table:'bookings' }, payload => handleNewBooking(payload.new))
+      .subscribe();
+  }
+  function updateNotificationPermissionButton(){
+    const btn=$('btnEnableBookingNotifications');
+    if(!('Notification' in window)){ btn.textContent='แจ้งเตือนบนเครื่องไม่ได้'; btn.disabled=true; return; }
+    btn.textContent = Notification.permission==='granted' ? 'แจ้งเตือนเปิดอยู่' : 'เปิดแจ้งเตือน';
+  }
+  async function requestBookingNotificationPermission(){
+    try{
+      if(!('Notification' in window)){ toast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน',false); return; }
+      const result = await Notification.requestPermission();
+      updateNotificationPermissionButton();
+      toast(result==='granted' ? 'เปิดแจ้งเตือนการจองแล้ว' : 'ยังไม่ได้อนุญาตการแจ้งเตือน', result==='granted');
+    }catch(e){ toast('เปิดแจ้งเตือนไม่สำเร็จ: '+(e?.message||e), false); }
+  }
+  function toggleBookingAlertsPanel(){
+    $('bookingAlertsPanel').classList.toggle('hidden');
+    bookingAlertCount=0;
+    updateBookingAlertBadge();
+  }
+  function clearBookingAlerts(){
+    bookingAlerts=[];
+    bookingAlertCount=0;
+    renderBookingAlerts();
+    updateBookingAlertBadge();
+  }
+  function updateBookingAlertBadge(){
+    const badge=$('bookingAlertBadge');
+    badge.textContent=String(bookingAlertCount);
+    badge.classList.toggle('show', bookingAlertCount>0);
+  }
+  function playBookingAlertSound(){
+    try{
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if(!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type='sine'; osc.frequency.value=880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime+0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.32);
+      osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime+0.35);
+    }catch(_){ }
+  }
+  async function handleNewBooking(row){
+    try{
+      const detail = await fetchBookingAlertDetail(row.id);
+      const alert = makeBookingAlertObject(detail || row);
+      bookingAlerts.unshift(alert);
+      bookingAlerts = bookingAlerts.slice(0, 20);
+      bookingAlertCount += 1;
+      renderBookingAlerts();
+      updateBookingAlertBadge();
+      toast('มีการจองใหม่: '+alert.service+' เวลา '+alert.time, true);
+      playBookingAlertSound();
+      if('Notification' in window && Notification.permission==='granted'){
+        new Notification('มีการจองใหม่', { body:`${alert.customer} • ${alert.service} • ${alert.time}`, tag:'new-booking-'+alert.id });
+      }
+      await loadBookings30d();
+    }catch(e){
+      console.error('booking alert error', e);
+      toast('มีการจองใหม่ แต่โหลดรายละเอียดไม่สำเร็จ', false);
+      await loadBookings30d();
+    }
+  }
+  async function fetchBookingAlertDetail(id){
+    const {data:b,error}=await sb.from('bookings').select('id,user_id,start_at,end_at,status,slip_url,deposit_amount,total_amount,services(id,name,price),staff(display_name)').eq('id',id).maybeSingle();
+    if(error) throw error;
+    if(!b) return null;
+    let prof={};
+    if(b.user_id){ const {data:p}=await sb.from('profiles').select('username,address').eq('id',b.user_id).maybeSingle(); prof=p||{}; }
+    return {...b, profile:prof};
+  }
+  function makeBookingAlertObject(b){
+    const customer = b.profile?.username || profilesMap.get(b.user_id)?.username || 'ลูกค้า';
+    const service = b.services?.name || 'บริการ';
+    const staff = b.staff?.display_name || 'ไม่ระบุช่าง';
+    const time = b.start_at ? fmtTime(b.start_at) : 'ไม่ระบุเวลา';
+    return { id:b.id||Date.now(), customer, service, staff, time, createdAt:new Date().toISOString() };
+  }
+  function renderBookingAlerts(){
+    const box=$('bookingAlertsList');
+    if(!bookingAlerts.length){ box.className='muted'; box.innerHTML='ยังไม่มีการจองใหม่'; return; }
+    box.className='';
+    box.innerHTML=bookingAlerts.map(a=>`<div class="alert-item"><div class="alert-title">จองใหม่: ${escapeHtml(a.service)}</div><div class="alert-meta">ลูกค้า: ${escapeHtml(a.customer)}<br>ช่าง: ${escapeHtml(a.staff)}<br>เวลา: ${escapeHtml(a.time)}</div><div style="margin-top:8px"><button class="btn btn-ghost" type="button" onclick="setTab('bookings')">ไปดูคิว</button></div></div>`).join('');
+  }
   function getRange30d(){ const from=new Date(); from.setHours(0,0,0,0); const to=new Date(from); to.setDate(to.getDate()+30); $('rangeText').textContent=`ช่วงเวลา: ${from.toLocaleDateString('th-TH')} 00:00 - ${to.toLocaleDateString('th-TH')} 00:00`; return {from,to}; }
   async function loadBookings30d(){ const {from,to}=getRange30d(); let q=sb.from('bookings').select('id,user_id,start_at,end_at,status,slip_url,deposit_amount,total_amount,services(id,name,price),staff(display_name)').gte('start_at',from.toISOString()).lt('start_at',to.toISOString()).order('start_at',{ascending:true}); if(filterUserId)q=q.eq('user_id',filterUserId); const {data,error}=await q; if(error){showSys('โหลดคิวไม่สำเร็จ: '+error.message);return;} bookingsRaw=data||[]; const uids=[...new Set(bookingsRaw.map(b=>b.user_id).filter(Boolean))]; if(uids.length){ const {data:profs}=await sb.from('profiles').select('id,username,address').in('id',uids); profilesMap=new Map((profs||[]).map(p=>[p.id,p])); }else profilesMap=new Map(); renderBookings(); }
   const statusOptions=[{value:'booked',label:STATUS_LABELS.booked},{value:'in_service',label:STATUS_LABELS.in_service},{value:'paid',label:STATUS_LABELS.paid}];

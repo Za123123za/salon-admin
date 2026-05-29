@@ -124,7 +124,7 @@
     </div>
 
     <section id="bookingsPanel" class="card">
-      <div class="row" style="justify-content:space-between"><h3 style="margin:0">คิวช่วง 30 วัน</h3><div class="row"><input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง/ที่อยู่" /><button id="btnClearFilter" class="btn btn-ghost" type="button" title="ล้างตัวกรองผู้ใช้">ล้างกรอง</button><button id="btnReload" class="btn btn-ghost" type="button">รีเฟรช</button></div></div>
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">คิวช่วง 30 วัน</h3><div class="row"><input id="searchBooking" placeholder="ค้นหา: ลูกค้า/บริการ/ช่าง/ที่อยู่" /><button id="btnClearFilter" class="btn btn-ghost" type="button" title="ล้างตัวกรองผู้ใช้">ล้างกรอง</button><button id="btnReload" class="btn btn-ghost" type="button">รีเฟรช</button><button id="btnClearAllBookings" class="btn btn-danger" type="button" title="เปลี่ยนสถานะการจองทั้งหมดเป็นยกเลิก แต่ไม่ลบยอดขาย/สถิติ">ล้างการจองทั้งหมด</button></div></div>
       <div style="height:10px"></div><div class="muted" id="rangeText"></div><div style="height:10px"></div>
       <div class="card"><div class="group-title"><h4>จองแล้ว</h4><span class="pill" id="countBooked">0 รายการ</span></div><div id="groupBooked" class="cards"></div></div>
       <div class="card"><div class="group-title"><h4>ผู้ใช้เข้าใช้บริการ</h4><span class="pill" id="countInService">0 รายการ</span></div><div id="groupInService" class="cards"></div></div>
@@ -209,7 +209,7 @@
     $('btnLogin').addEventListener('click',onLogin); $('btnSignOut').addEventListener('click',onSignOut);
     $('btnBookingAlerts').addEventListener('click',toggleBookingAlertsPanel); $('btnClearBookingAlerts').addEventListener('click',clearBookingAlerts); $('btnEnableBookingNotifications').addEventListener('click',requestBookingNotificationPermission);
     $('tabBookings').addEventListener('click',()=>setTab('bookings')); $('tabPayments').addEventListener('click',()=>setTab('payments')); $('tabPromotions').addEventListener('click',()=>setTab('promotions')); $('tabCustomers').addEventListener('click',()=>setTab('customers')); $('tabChats').addEventListener('click',()=>setTab('chats')); $('tabGallery').addEventListener('click',()=>setTab('gallery')); $('tabReviews').addEventListener('click',()=>setTab('reviews')); $('tabStaffs').addEventListener('click',()=>setTab('staffs'));
-    $('btnReload').addEventListener('click',loadBookings30d); $('btnClearFilter').addEventListener('click',()=>{filterUserId=null;renderBookings();toast('ล้างตัวกรองผู้ใช้แล้ว')}); $('searchBooking').addEventListener('input',renderBookings); $('searchCustomer').addEventListener('input',renderCustomers);
+    $('btnReload').addEventListener('click',loadBookings30d); $('btnClearAllBookings').addEventListener('click',clearAllBookingsKeepSales); $('btnClearFilter').addEventListener('click',()=>{filterUserId=null;renderBookings();toast('ล้างตัวกรองผู้ใช้แล้ว')}); $('searchBooking').addEventListener('input',renderBookings); $('searchCustomer').addEventListener('input',renderCustomers);
     $('btnSend').addEventListener('click',sendChat); $('btnPickImage').addEventListener('click',()=>$('chatImage').click()); $('chatImage').addEventListener('change',onPickChatImage);
     $('btnReloadPayments').addEventListener('click',loadPayments12m); $('monthPick').addEventListener('change',renderPaymentsDashboard);
     $('galleryCategory').addEventListener('change',e=>{galleryCategoryId=e.target.value;loadGallery();}); $('btnUploadGallery').addEventListener('click',uploadGalleryImages);
@@ -329,6 +329,49 @@
   function calcAmountsForBooking(b){ const svcName=b.services?.name||'—'; const total=Number(b.total_amount||0)||Number(b.services?.price||0)||Number(PRICE_FALLBACK[svcName]||0)||0; const deposit=Number(b.deposit_amount||0)||(total>0?total/2:0); const net=total; return {total,deposit,net,svcName}; }
   function makeCard(b){ const prof=profilesMap.get(b.user_id)||{}, name=prof.username||'—', addr=prof.address||'—', svc=b.services?.name||'—', stf=b.staff?.display_name||'—', amt=calcAmountsForBooking(b); const sel=`<select data-bid="${b.id}" class="statusSel">${statusOptions.map(op=>`<option value="${op.value}" ${op.value===b.status?'selected':''}>${op.label}</option>`).join('')}</select>`; const slipPart=b.slip_url?`<button class="btn btn-ghost" type="button" onclick="window.open('${b.slip_url}','_blank')">ดูสลิป</button>`:`<span class="muted" style="font-size:12px">ไม่มีหลักฐานโอน</span>`; return `<div class="booking-card" data-bid="${b.id}"><div class="card-head"><div class="card-time">${fmtTime(b.start_at)}</div><div>${badge(b.status)}</div></div><div class="card-body"><div class="kv"><div class="k">ลูกค้า</div><div class="v">${escapeHtml(name)}</div></div><div class="kv"><div class="k">บริการ</div><div class="v">${escapeHtml(svc)}</div></div><div class="kv"><div class="k">ราคา</div><div class="v">${amt.total>0?`${money(amt.total)} <span class="muted small">(มัดจำ ${money(amt.deposit)} / ยอดขาย ${money(amt.total)})</span>`:'<span class="muted">ยังไม่ตั้งราคา</span>'}</div></div><div class="kv"><div class="k">ช่าง</div><div class="v">${escapeHtml(stf)}</div></div><div class="kv"><div class="k">ที่อยู่</div><div class="v" style="font-weight:500;color:#374151">${escapeHtml(addr)}</div></div></div><div class="card-foot"><div class="row" style="gap:8px"><div class="muted" style="font-size:12px">เปลี่ยนสถานะ</div>${sel}</div><div class="row" style="gap:8px">${slipPart}<button class="btn btn-ghost" type="button" onclick="openChatTabAndWith('${b.user_id}','${escapeHtml(name)}')">แชท</button></div></div></div>`; }
   function renderBookings(){ const q=($('searchBooking').value||'').toLowerCase(); const filtered=(bookingsRaw||[]).filter(b=>{ const prof=profilesMap.get(b.user_id)||{}; return [prof.username||'',prof.address||'',b.services?.name||'',b.staff?.display_name||''].some(x=>String(x).toLowerCase().includes(q)) && (filterUserId?b.user_id===filterUserId:true); }); const listBooked=filtered.filter(b=>b.status==='booked'), listInSrv=filtered.filter(b=>b.status==='in_service'), listPaid=filtered.filter(b=>b.status==='paid'); $('groupBooked').innerHTML=listBooked.map(makeCard).join('')||`<div class="muted">— ว่าง —</div>`; $('groupInService').innerHTML=listInSrv.map(makeCard).join('')||`<div class="muted">— ว่าง —</div>`; $('groupPaid').innerHTML=listPaid.map(makeCard).join('')||`<div class="muted">— ว่าง —</div>`; $('countBooked').textContent=`${listBooked.length} รายการ`; $('countInService').textContent=`${listInSrv.length} รายการ`; $('countPaid').textContent=`${listPaid.length} รายการ`; }
+
+  async function clearAllBookingsKeepSales(){
+    const firstOk = confirm(
+      'ต้องการล้างการจองทั้งหมดจริงไหม?\n\nระบบจะเปลี่ยนสถานะ booking ทุกแถวเป็น “ยกเลิก” เพื่อปลดคิวให้ผู้ใช้จองใหม่ได้ แต่จะไม่ลบข้อมูลใน payments / สรุปยอดขาย / สถิติบริการ'
+    );
+    if(!firstOk) return;
+
+    const typed = prompt('เพื่อยืนยัน ให้พิมพ์คำว่า ล้างการจอง');
+    if(typed !== 'ล้างการจอง'){
+      toast('ยกเลิกการล้างการจอง', false);
+      return;
+    }
+
+    const btn = $('btnClearAllBookings');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'กำลังล้าง...';
+
+    try{
+      const { data, error } = await sb
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .neq('status', 'cancelled')
+        .select('id');
+
+      if(error) throw error;
+
+      const count = Array.isArray(data) ? data.length : 0;
+      bookingsRaw = (bookingsRaw || []).map(b => ({ ...b, status: 'cancelled' }));
+      renderBookings();
+      toast(`ล้างการจองเรียบร้อยแล้ว ${count} รายการ ✅`);
+
+      // รีเฟรชคิว แต่ไม่แตะต้อง payments เพื่อให้ยอดขาย/สถิติเดิมยังอยู่ครบ
+      await loadBookings30d();
+    }catch(e){
+      toast('ล้างการจองไม่สำเร็จ: '+(e?.message||e), false);
+      console.error(e);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+
   async function ensurePaymentRecorded(bookingId){ const {data:{user}}=await sb.auth.getUser(); if(!user)throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่'); const {data:b,error}=await sb.from('bookings').select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price)').eq('id',bookingId).maybeSingle(); if(error)throw error; if(!b)throw new Error('ไม่พบ booking'); const amt=calcAmountsForBooking(b); const payload={booking_id:b.id,user_id:b.user_id,service_id:b.services?.id||null,service_name:amt.svcName,total_amount:amt.total,deposit_amount:amt.deposit,net_amount:amt.total,paid_at:new Date().toISOString()}; const {error:upErr}=await sb.from('payments').upsert(payload,{onConflict:'booking_id'}); if(upErr)throw upErr; }
   async function onChangeStatus(bookingId,newStatus){ try{ if(newStatus==='paid')await ensurePaymentRecorded(bookingId); const {error}=await sb.from('bookings').update({status:newStatus}).eq('id',bookingId); if(error){toast('อัปเดตสถานะไม่สำเร็จ: '+error.message,false);return;} bookingsRaw=bookingsRaw.map(b=>b.id===bookingId?({...b,status:newStatus}):b); renderBookings(); toast('อัปเดตสถานะเรียบร้อย'); if(newStatus==='paid')await loadPayments12m(); }catch(e){toast('เกิดข้อผิดพลาด: '+(e?.message||e),false); console.error(e);} }
 

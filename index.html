@@ -401,47 +401,12 @@
       const role=p.is_admin?'Admin':'User';
       const created=p.created_at?new Date(p.created_at).toLocaleDateString('th-TH'):'—';
       const shortId=String(p.id||'').slice(0,8)+'...';
-      const deleteBtn=p.is_admin
-        ? `<button class="btn btn-ghost" type="button" disabled title="ไม่อนุญาตให้ลบบัญชีแอดมิน">ลบบัญชี</button>`
-        : `<button class="btn btn-danger" type="button" onclick="deleteCustomerAccount('${p.id}','${escapeHtml(username)}')">ลบบัญชี</button>`;
-
-      return `<tr><td><b>${escapeHtml(username)}</b></td><td>${role}</td><td>${created}</td><td><span class="muted small" title="${escapeHtml(p.id)}">${escapeHtml(shortId)}</span></td><td><div class="row"><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button><button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${escapeHtml(username)}')">แชท</button>${deleteBtn}</div></td></tr>`;
+      return `<tr><td><b>${escapeHtml(username)}</b></td><td>${role}</td><td>${created}</td><td><span class="muted small" title="${escapeHtml(p.id)}">${escapeHtml(shortId)}</span></td><td><div class="row"><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button><button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${escapeHtml(username)}')">แชท</button></div></td></tr>`;
     }).join('')||`<tr><td colspan="5" class="muted">— ไม่มีข้อมูลผู้ใช้ —</td></tr>`;
   }
 
   window.viewUserBookings=async uid=>{filterUserId=uid;setTab('bookings');await loadBookings30d();toast('กรองการจองตามผู้ใช้แล้ว');};
 
-  window.deleteCustomerAccount=async function(uid,username){
-    try{
-      const {data:{user}}=await sb.auth.getUser();
-      if(!user){toast('session หมดอายุ กรุณาเข้าสู่ระบบใหม่',false);return;}
-      if(user.id===uid){toast('ไม่สามารถลบบัญชีแอดมินที่กำลังใช้งานอยู่',false);return;}
-
-      const target=(customersRaw||[]).find(p=>String(p.id)===String(uid));
-      if(target?.is_admin){toast('ไม่อนุญาตให้ลบบัญชีแอดมินจากหน้านี้',false);return;}
-
-      const ok=confirm(`ยืนยันลบบัญชีผู้ใช้นี้?\n\nผู้ใช้: ${username}\n\nระบบจะลบข้อมูลโปรไฟล์ออกจากตาราง profiles เพื่อไม่ให้แสดงในหน้าแอดมิน`);
-      if(!ok)return;
-
-      const typed=prompt(`เพื่อยืนยัน ให้พิมพ์ชื่อผู้ใช้: ${username}`);
-      if(typed!==username){toast('ยกเลิกการลบบัญชีผู้ใช้',false);return;}
-
-      const {data,error}=await sb.from('profiles').delete().eq('id',uid).select('id');
-      if(error){toast('ลบบัญชีผู้ใช้ไม่สำเร็จ: '+error.message,false);return;}
-      if(!Array.isArray(data)||!data.length){toast('ลบไม่สำเร็จ: ไม่พบข้อมูล หรือ RLS ไม่อนุญาต',false);return;}
-
-      customersRaw=(customersRaw||[]).filter(p=>String(p.id)!==String(uid));
-      if(filterUserId===uid){
-        filterUserId=null;
-        await loadBookings30d();
-      }
-      renderCustomers();
-      toast('ลบบัญชีผู้ใช้เรียบร้อย ✅');
-    }catch(e){
-      console.error(e);
-      toast('ลบบัญชีผู้ใช้ไม่สำเร็จ: '+(e?.message||e),false);
-    }
-  };
 
   function pad2(n){return String(n).padStart(2,'0')} function monthKey(date){const d=new Date(date);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`} function monthLabel(key){const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('th-TH',{year:'numeric',month:'long'})}
   function initMonthPicker(){ const sel=$('monthPick'); const now=new Date(); const keys=[]; for(let i=0;i<12;i++)keys.push(monthKey(new Date(now.getFullYear(),now.getMonth()-i,1))); sel.innerHTML=keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join(''); }

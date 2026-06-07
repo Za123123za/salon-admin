@@ -163,7 +163,7 @@
       <div id="promotionsGrid" class="cards"></div>
     </section>
 
-    <section id="customersPanel" class="card hidden"><div class="row" style="justify-content:space-between"><h3 style="margin:0">ผู้ใช้</h3><input id="searchCustomer" placeholder="ค้นหา: ชื่อผู้ใช้" /></div><div style="height:10px"></div><div class="card"><table><thead><tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th><th></th></tr></thead><tbody id="customerRows"></tbody></table></div></section>
+    <section id="customersPanel" class="card hidden"><div class="row" style="justify-content:space-between"><div><h3 style="margin:0">ผู้ใช้</h3><div class="muted" style="margin-top:4px">แสดงผู้ใช้ที่เคยสมัครและมีโปรไฟล์อยู่ในระบบ</div></div><div class="row"><input id="searchCustomer" placeholder="ค้นหา: ชื่อผู้ใช้ / ID" /><button id="btnReloadCustomers" class="btn btn-ghost" type="button">รีเฟรช</button></div></div><div style="height:10px"></div><div class="card"><table><thead><tr><th>ผู้ใช้</th><th>สิทธิ์</th><th>สมัครเมื่อ</th><th>รหัสผู้ใช้</th><th></th></tr></thead><tbody id="customerRows"></tbody></table></div></section>
 
     <section id="chatsPanel" class="hidden"><div id="chatsLayout"><div id="chatList"><div class="cl-head">ผู้ใช้ที่คุยด้วย</div><div id="chatListItems"></div></div><div id="chatView"><div id="chatHeader"><strong id="chatTitle">เลือกผู้ใช้ทางซ้ายเพื่อเริ่มคุย</strong><span id="chatHeaderRight" class="muted"></span></div><div id="chatMessages"></div><div id="chatComposer"><input id="chatInput" placeholder="พิมพ์ข้อความ..." /><input id="chatImage" type="file" accept="image/*" class="hidden" /><button class="btn btn-ghost" type="button" id="btnPickImage">📷</button><button class="btn" type="button" id="btnSend">ส่ง</button></div><div id="chatImageHint" class="muted small" style="padding:0 12px 12px 12px; display:none;"></div></div></div></section>
 
@@ -209,7 +209,7 @@
     $('btnLogin').addEventListener('click',onLogin); $('btnSignOut').addEventListener('click',onSignOut);
     $('btnBookingAlerts').addEventListener('click',toggleBookingAlertsPanel); $('btnClearBookingAlerts').addEventListener('click',clearBookingAlerts); $('btnEnableBookingNotifications').addEventListener('click',requestBookingNotificationPermission);
     $('tabBookings').addEventListener('click',()=>setTab('bookings')); $('tabPayments').addEventListener('click',()=>setTab('payments')); $('tabPromotions').addEventListener('click',()=>setTab('promotions')); $('tabCustomers').addEventListener('click',()=>setTab('customers')); $('tabChats').addEventListener('click',()=>setTab('chats')); $('tabGallery').addEventListener('click',()=>setTab('gallery')); $('tabReviews').addEventListener('click',()=>setTab('reviews')); $('tabStaffs').addEventListener('click',()=>setTab('staffs'));
-    $('btnReload').addEventListener('click',loadBookings30d); $('btnClearAllBookings').addEventListener('click',clearAllBookingsKeepSales); $('btnClearFilter').addEventListener('click',()=>{filterUserId=null;renderBookings();toast('ล้างตัวกรองผู้ใช้แล้ว')}); $('searchBooking').addEventListener('input',renderBookings); $('searchCustomer').addEventListener('input',renderCustomers);
+    $('btnReload').addEventListener('click',loadBookings30d); $('btnClearAllBookings').addEventListener('click',clearAllBookingsKeepSales); $('btnClearFilter').addEventListener('click',()=>{filterUserId=null;renderBookings();toast('ล้างตัวกรองผู้ใช้แล้ว')}); $('searchBooking').addEventListener('input',renderBookings); $('searchCustomer').addEventListener('input',renderCustomers); $('btnReloadCustomers').addEventListener('click',loadCustomers);
     $('btnSend').addEventListener('click',sendChat); $('btnPickImage').addEventListener('click',()=>$('chatImage').click()); $('chatImage').addEventListener('change',onPickChatImage);
     $('btnReloadPayments').addEventListener('click',loadPayments12m); $('monthPick').addEventListener('change',renderPaymentsDashboard);
     $('galleryCategory').addEventListener('change',e=>{galleryCategoryId=e.target.value;loadGallery();}); $('btnUploadGallery').addEventListener('click',uploadGalleryImages);
@@ -375,9 +375,73 @@
   async function ensurePaymentRecorded(bookingId){ const {data:{user}}=await sb.auth.getUser(); if(!user)throw new Error('session หมดอายุ กรุณาเข้าสู่ระบบใหม่'); const {data:b,error}=await sb.from('bookings').select('id,user_id,start_at,status,deposit_amount,total_amount,services(id,name,price)').eq('id',bookingId).maybeSingle(); if(error)throw error; if(!b)throw new Error('ไม่พบ booking'); const amt=calcAmountsForBooking(b); const payload={booking_id:b.id,user_id:b.user_id,service_id:b.services?.id||null,service_name:amt.svcName,total_amount:amt.total,deposit_amount:amt.deposit,net_amount:amt.total,paid_at:new Date().toISOString()}; const {error:upErr}=await sb.from('payments').upsert(payload,{onConflict:'booking_id'}); if(upErr)throw upErr; }
   async function onChangeStatus(bookingId,newStatus){ try{ if(newStatus==='paid')await ensurePaymentRecorded(bookingId); const {error}=await sb.from('bookings').update({status:newStatus}).eq('id',bookingId); if(error){toast('อัปเดตสถานะไม่สำเร็จ: '+error.message,false);return;} bookingsRaw=bookingsRaw.map(b=>b.id===bookingId?({...b,status:newStatus}):b); renderBookings(); toast('อัปเดตสถานะเรียบร้อย'); if(newStatus==='paid')await loadPayments12m(); }catch(e){toast('เกิดข้อผิดพลาด: '+(e?.message||e),false); console.error(e);} }
 
-  async function loadCustomers(){ const {data}=await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at',{ascending:false}); customersRaw=data||[]; renderCustomers(); }
-  function renderCustomers(){ const q=($('searchCustomer').value||'').toLowerCase(); $('customerRows').innerHTML=(customersRaw||[]).filter(p=>(p.username||'').toLowerCase().includes(q)).map(p=>`<tr><td>${escapeHtml(p.username||'—')}</td><td>${p.is_admin?'Admin':'User'}</td><td>${p.created_at?new Date(p.created_at).toLocaleDateString('th-TH'):'—'}</td><td><div class="row"><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button><button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${escapeHtml(p.username||'ผู้ใช้')}')">แชท</button></div></td></tr>`).join('')||`<tr><td colspan="4" class="muted">— ไม่มีข้อมูล —</td></tr>`; }
+  async function loadCustomers(){
+    const rows=$('customerRows');
+    rows.innerHTML=`<tr><td colspan="5" class="muted">กำลังโหลดผู้ใช้...</td></tr>`;
+    const {data,error}=await sb.from('profiles').select('id,username,is_admin,created_at').order('created_at',{ascending:false});
+    if(error){
+      rows.innerHTML=`<tr><td colspan="5" class="muted" style="color:#b91c1c">โหลดผู้ใช้ไม่สำเร็จ: ${escapeHtml(error.message)}</td></tr>`;
+      return;
+    }
+    customersRaw=data||[];
+    renderCustomers();
+  }
+
+  function renderCustomers(){
+    const q=($('searchCustomer').value||'').toLowerCase().trim();
+    const filtered=(customersRaw||[]).filter(p=>{
+      const name=(p.username||'').toLowerCase();
+      const uid=String(p.id||'').toLowerCase();
+      const role=p.is_admin?'admin':'user';
+      return !q || name.includes(q) || uid.includes(q) || role.includes(q);
+    });
+
+    $('customerRows').innerHTML=filtered.map(p=>{
+      const username=p.username||'ผู้ใช้';
+      const role=p.is_admin?'Admin':'User';
+      const created=p.created_at?new Date(p.created_at).toLocaleDateString('th-TH'):'—';
+      const shortId=String(p.id||'').slice(0,8)+'...';
+      const deleteBtn=p.is_admin
+        ? `<button class="btn btn-ghost" type="button" disabled title="ไม่อนุญาตให้ลบบัญชีแอดมิน">ลบบัญชี</button>`
+        : `<button class="btn btn-danger" type="button" onclick="deleteCustomerAccount('${p.id}','${escapeHtml(username)}')">ลบบัญชี</button>`;
+
+      return `<tr><td><b>${escapeHtml(username)}</b></td><td>${role}</td><td>${created}</td><td><span class="muted small" title="${escapeHtml(p.id)}">${escapeHtml(shortId)}</span></td><td><div class="row"><button class="btn" onclick="viewUserBookings('${p.id}')">ดูการจอง</button><button class="btn btn-ghost" onclick="openChatTabAndWith('${p.id}','${escapeHtml(username)}')">แชท</button>${deleteBtn}</div></td></tr>`;
+    }).join('')||`<tr><td colspan="5" class="muted">— ไม่มีข้อมูลผู้ใช้ —</td></tr>`;
+  }
+
   window.viewUserBookings=async uid=>{filterUserId=uid;setTab('bookings');await loadBookings30d();toast('กรองการจองตามผู้ใช้แล้ว');};
+
+  window.deleteCustomerAccount=async function(uid,username){
+    try{
+      const {data:{user}}=await sb.auth.getUser();
+      if(!user){toast('session หมดอายุ กรุณาเข้าสู่ระบบใหม่',false);return;}
+      if(user.id===uid){toast('ไม่สามารถลบบัญชีแอดมินที่กำลังใช้งานอยู่',false);return;}
+
+      const target=(customersRaw||[]).find(p=>String(p.id)===String(uid));
+      if(target?.is_admin){toast('ไม่อนุญาตให้ลบบัญชีแอดมินจากหน้านี้',false);return;}
+
+      const ok=confirm(`ยืนยันลบบัญชีผู้ใช้นี้?\n\nผู้ใช้: ${username}\n\nระบบจะลบข้อมูลโปรไฟล์ออกจากตาราง profiles เพื่อไม่ให้แสดงในหน้าแอดมิน`);
+      if(!ok)return;
+
+      const typed=prompt(`เพื่อยืนยัน ให้พิมพ์ชื่อผู้ใช้: ${username}`);
+      if(typed!==username){toast('ยกเลิกการลบบัญชีผู้ใช้',false);return;}
+
+      const {data,error}=await sb.from('profiles').delete().eq('id',uid).select('id');
+      if(error){toast('ลบบัญชีผู้ใช้ไม่สำเร็จ: '+error.message,false);return;}
+      if(!Array.isArray(data)||!data.length){toast('ลบไม่สำเร็จ: ไม่พบข้อมูล หรือ RLS ไม่อนุญาต',false);return;}
+
+      customersRaw=(customersRaw||[]).filter(p=>String(p.id)!==String(uid));
+      if(filterUserId===uid){
+        filterUserId=null;
+        await loadBookings30d();
+      }
+      renderCustomers();
+      toast('ลบบัญชีผู้ใช้เรียบร้อย ✅');
+    }catch(e){
+      console.error(e);
+      toast('ลบบัญชีผู้ใช้ไม่สำเร็จ: '+(e?.message||e),false);
+    }
+  };
 
   function pad2(n){return String(n).padStart(2,'0')} function monthKey(date){const d=new Date(date);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`} function monthLabel(key){const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('th-TH',{year:'numeric',month:'long'})}
   function initMonthPicker(){ const sel=$('monthPick'); const now=new Date(); const keys=[]; for(let i=0;i<12;i++)keys.push(monthKey(new Date(now.getFullYear(),now.getMonth()-i,1))); sel.innerHTML=keys.map(k=>`<option value="${k}">${monthLabel(k)}</option>`).join(''); }
